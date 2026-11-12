@@ -1,143 +1,1950 @@
-# الدور: خبير تصميم وتطوير المواقع الإلكترونية والتحول الرقمي
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظومة متابعة وتجميع وتحليل أنشطة الإدارة العامة لإرشاد الصرف</title>
+    <!-- تحميل خط القاهرة (Cairo) المناسب للواجهات الحكومية العربية -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- تحميل مكتبة Tailwind CSS للتصميم المتجاوب -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تحميل أيقونات Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- تحميل مكتبة Chart.js للرسوم البيانية -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- تحميل مكتبة SheetJS لتصدير ملفات Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-أريد منك العمل باعتبارك خبيرًا محترفًا في تصميم وتطوير تطبيقات الويب الإدارية، وتحليل البيانات، والأتمتة، وتوظيف الذكاء الاصطناعي في تحسين كفاءة العمل الحكومي.
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        water: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* تنسيقات خاصة للطباعة الرسمية للتقارير الشهرية */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background-color: white !important;
+                color: black !important;
+            }
+            .print-container {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+        /* تحسين شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased flex h-screen overflow-hidden">
 
-## أولًا: فكرة المشروع
+    <!-- صندوق التنبيهات المخصص (بديل alert) -->
+    <div id="toast-container" class="fixed top-5 left-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none no-print"></div>
 
-أريد تطوير موقع إلكتروني باسم:
+    <!-- نافذة التأكيد المخصصة (بديل confirm) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-100">
+            <div class="flex items-center gap-3 text-amber-600 mb-3">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                <h3 class="text-lg font-bold text-slate-900" id="confirm-title">تأكيد الإجراء</h3>
+            </div>
+            <p class="text-slate-600 text-sm mb-6 leading-relaxed" id="confirm-message">هل أنت متأكد من تنفيذ هذا الإجراء؟</p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">إلغاء</button>
+                <button id="confirm-action-btn" class="px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-700 transition">تأكيد</button>
+            </div>
+        </div>
+    </div>
 
-**منظومة متابعة وتجميع وتحليل أنشطة الإدارة العامة لإرشاد الصرف**
+    <!-- القائمة الجانبية (Sidebar) -->
+    <aside id="sidebar" class="w-72 bg-water-900 text-white flex flex-col transition-all duration-300 z-40 fixed inset-y-0 right-0 transform translate-x-full lg:relative lg:translate-x-0 no-print shadow-xl">
+        <!-- ترويسة المنظومة -->
+        <div class="p-5 border-b border-water-800 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-water-600 flex items-center justify-center shadow-inner shrink-0">
+                    <i data-lucide="droplets" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm leading-snug text-white">الإدارة العامة لإرشاد الصرف</h1>
+                    <span class="text-xs text-water-200 block">منظومة المتابعة والتحليل</span>
+                </div>
+            </div>
+            <button onclick="toggleSidebar()" class="lg:hidden text-water-200 hover:text-white p-1">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
 
-الهدف من الموقع هو تجميع الأنشطة اليومية الواردة من الأقاليم والإدارات والهندسات التابعة لها، والتي تصل حاليًا من خلال تطبيق WhatsApp، وتنظيمها في قاعدة بيانات مركزية، ومتابعة الجهات التي أرسلت والتي لم ترسل، وتحليل الأنشطة، وإنتاج تقارير شهرية تفصيلية مدعمة بالصور.
+        <!-- روابط التنقل -->
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <button onclick="switchTab('dashboard')" data-tab="dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-water-700 text-white">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span>لوحة التحكم الرئيسية</span>
+            </button>
+            <button onclick="switchTab('register')" data-tab="register" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+                <span>تسجيل وتعديل الأنشطة</span>
+            </button>
+            <button onclick="switchTab('tracking')" data-tab="tracking" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                <i data-lucide="calendar-check-2" class="w-5 h-5"></i>
+                <span>متابعة الإرسال اليومي</span>
+            </button>
+            <button onclick="switchTab('ai-analysis')" data-tab="ai-analysis" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+                <span>تحليل الأنشطة الذكي</span>
+            </button>
+            <button onclick="switchTab('reports')" data-tab="reports" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                <i data-lucide="file-bar-chart-2" class="w-5 h-5"></i>
+                <span>التقارير الشهرية الرسمية</span>
+            </button>
+            <button onclick="switchTab('gallery')" data-tab="gallery" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                <i data-lucide="images" class="w-5 h-5"></i>
+                <span>أرشيف الصور الموثق</span>
+            </button>
+            
+            <div class="pt-4 mt-4 border-t border-water-800">
+                <p class="px-4 text-xs font-semibold text-water-300 uppercase tracking-wider mb-2">الإعدادات والربط</p>
+                <button onclick="switchTab('structure')" data-tab="structure" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                    <i data-lucide="network" class="w-5 h-5"></i>
+                    <span>إدارة الهيكل الإداري</span>
+                </button>
+                <button onclick="switchTab('connection')" data-tab="connection" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
+                    <i data-lucide="database" class="w-5 h-5"></i>
+                    <span>الربط بـ Google Sheets</span>
+                </button>
+            </div>
+        </nav>
 
-## ثانيًا: الهيكل الإداري
+        <!-- حالة الاتصال بالبيانات -->
+        <div class="p-4 bg-water-950/50 border-t border-water-800 text-xs">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-water-200">حالة قاعدة البيانات:</span>
+                <span id="db-status-badge" class="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold">ذاكرة الجلسة</span>
+            </div>
+            <p class="text-water-300/80 text-[11px] leading-tight">اربط رابط Google Apps Script لحفظ البيانات مركزيًا.</p>
+        </div>
+    </aside>
 
-يتكون الهيكل من التسلسل التالي:
+    <!-- المحتوى الرئيسي -->
+    <div class="flex-1 flex flex-col h-screen overflow-hidden">
+        <!-- الشريط العلوي (Topbar) -->
+        <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between no-print shrink-0">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <div>
+                    <h2 id="page-title" class="text-lg font-bold text-slate-800">لوحة التحكم الرئيسية</h2>
+                    <p id="page-subtitle" class="text-xs text-slate-500">نظرة شاملة على موقف الأنشطة والإرسال across الأقاليم الستة</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="hidden sm:flex items-center gap-2 bg-water-50 text-water-800 px-3 py-1.5 rounded-xl border border-water-100 text-xs font-semibold">
+                    <i data-lucide="calendar" class="w-4 h-4 text-water-600"></i>
+                    <span id="current-date-display"></span>
+                </div>
+                <button onclick="syncWithGoogleSheets()" id="sync-btn" class="flex items-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-sm" title="مزامنة البيانات مع Google Sheets">
+                    <i data-lucide="refresh-cw" class="w-4 h-4 text-water-600"></i>
+                    <span class="hidden md:inline">مزامنة البيانات</span>
+                </button>
+            </div>
+        </header>
 
-الإقليم ← الإدارة ← الهندسة ← النشاط ← التاريخ ← الصور.
+        <!-- منطقة عرض الصفحات -->
+        <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 print-container">
 
-الأقاليم الرئيسية المعتمدة:
+            <!-- 1. لوحة التحكم الرئيسية (Dashboard) -->
+            <section id="tab-dashboard" class="tab-section space-y-6">
+                <!-- تنبيه في حال عدم إضافة إدارات وهندسات بعد -->
+                <div id="empty-structure-alert" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2 bg-amber-100 text-amber-700 rounded-xl shrink-0">
+                            <i data-lucide="info" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-amber-900">الخطوة الأولى: تهيئة الهيكل الإداري</h3>
+                            <p class="text-xs text-amber-800 mt-0.5">تم تحميل الأقاليم الستة المعتمدة. يرجى إضافة الإدارات والهندسات التابعة لكل إقليم لتفعيل المتابعة الدقيقة وتسجيل الأنشطة.</p>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('structure')" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition shrink-0">
+                        إضافة الإدارات والهندسات الآن
+                    </button>
+                </div>
 
-1. إقليم شرق الدلتا.
-2. إقليم القناة وسيناء.
-3. إقليم وسط الدلتا.
-4. إقليم غرب الدلتا.
-5. إقليم مصر الوسطى.
-6. إقليم مصر العليا.
+                <!-- البطاقات الإحصائية -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500">إجمالي الأنشطة المسجلة</span>
+                            <div class="w-9 h-9 rounded-xl bg-water-50 text-water-600 flex items-center justify-center">
+                                <i data-lucide="layers" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-800" id="stat-total-activities">0</div>
+                        <p class="text-[11px] text-slate-400 mt-1">أنشطة فعلية منفذة</p>
+                    </div>
 
-قوائم الإدارات والهندسات غير متوفرة حاليًا، ولذلك يجب إنشاء قسم لإدارة الهيكل الإداري يسمح بإضافة الإدارات والهندسات وتعديلها لاحقًا دون تعديل الأكواد البرمجية.
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500">أنشطة اليوم / الشهر</span>
+                            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-800">
+                            <span id="stat-today-activities">0</span>
+                            <span class="text-sm font-semibold text-slate-400">/ <span id="stat-month-activities">0</span></span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">اليوم الحالي / الشهر الحالي</p>
+                    </div>
 
-يجب أن تكون الإدارات مرتبطة بالإقليم، والهندسات مرتبطة بالإدارة، بحيث تظهر القوائم تلقائيًا وفق الاختيار السابق.
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500">أقاليم أرسلت اليوم</span>
+                            <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i data-lucide="map-pin" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-800"><span id="stat-active-regions">0</span> <span class="text-sm font-semibold text-slate-400">/ 6</span></div>
+                        <p class="text-[11px] text-slate-400 mt-1">يشمل إفادات عدم وجود أنشطة</p>
+                    </div>
 
-## ثالثًا: الوظائف الرئيسية للموقع
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500">هندسات لم ترسل اليوم</span>
+                            <div class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                                <i data-lucide="clock-alert" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-extrabold text-rose-600" id="stat-missing-units">0</div>
+                        <p class="text-[11px] text-slate-400 mt-1">من إجمالي <span id="stat-total-units">0</span> هندسة مسجلة</p>
+                    </div>
 
-### 1. لوحة التحكم الرئيسية
-تعرض:
-- إجمالي الأنشطة المسجلة.
-- عدد الأنشطة اليومية والشهرية.
-- عدد الأقاليم التي أرسلت أنشطة.
-- عدد الجهات التي لم ترسل.
-- عدد الصور المرفقة.
-- توزيع الأنشطة حسب الأقاليم.
-- أحدث الأنشطة المسجلة.
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold text-slate-500">الصور الموثقة</span>
+                            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                <i data-lucide="camera" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl font-extrabold text-slate-800" id="stat-total-images">0</div>
+                        <p class="text-[11px] text-slate-400 mt-1">مرتبطة بالأنشطة المنفذة</p>
+                    </div>
+                </div>
 
-### 2. تسجيل الأنشطة
-إنشاء نموذج يحتوي على:
-- الإقليم.
-- الإدارة.
-- الهندسة.
-- تاريخ تنفيذ النشاط.
-- وصف تفصيلي للنشاط.
-- إرفاق صور متعددة.
-- إمكانية تعديل النشاط أو حذفه.
+                <!-- الرسم البياني وأحدث الأنشطة -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- توزيع الأنشطة حسب الأقاليم -->
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">توزيع الأنشطة حسب الأقاليم الستة</h3>
+                                <p class="text-xs text-slate-500">مقارنة إجمالي الأنشطة الفعلية المسجلة لكل إقليم</p>
+                            </div>
+                        </div>
+                        <div class="h-72 relative w-full">
+                            <canvas id="regionsChart"></canvas>
+                        </div>
+                    </div>
 
-### 3. متابعة الإرسال اليومي
-يجب التمييز بين ثلاث حالات:
-- تم إرسال أنشطة.
-- تم الإرسال مع عدم وجود أنشطة.
-- لم يتم الإرسال.
+                    <!-- أحدث الأنشطة المسجلة -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-slate-800 text-base">أحدث الأنشطة المسجلة</h3>
+                            <button onclick="switchTab('register')" class="text-xs font-bold text-water-600 hover:text-water-700">+ تسجيل جديد</button>
+                        </div>
+                        <div id="recent-activities-list" class="flex-1 space-y-3 overflow-y-auto max-h-72 pr-1">
+                            <!-- يتم تعبئتها ديناميكيًا -->
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-مع إمكانية عرض موقف كل إقليم وإدارة وهندسة حسب التاريخ، وإظهار الجهات المتأخرة في الإرسال.
+            <!-- 2. تسجيل وتعديل الأنشطة (Register Activity) -->
+            <section id="tab-register" class="tab-section hidden space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800" id="form-mode-title">تسجيل نشاط يومي جديد (وارد من WhatsApp أو الميدان)</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">اختر الإقليم ثم الإدارة والهندسة، وحدد حالة الإرسال بدقة.</p>
+                        </div>
+                        <button type="button" onclick="resetActivityForm()" id="cancel-edit-btn" class="hidden px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl">
+                            إلغاء التعديل
+                        </button>
+                    </div>
 
-### 4. تحليل الأنشطة
-استخدام الذكاء الاصطناعي للمساعدة في:
-- تصنيف الأنشطة حسب نوعها.
-- استخراج الموضوعات الرئيسية.
-- تحديد عدد المستفيدين إذا ورد في وصف النشاط.
-- تجميع الأنشطة المتشابهة.
-- إعداد ملخصات يومية وشهرية.
+                    <form id="activity-form" onsubmit="handleActivitySubmit(event)" class="space-y-5">
+                        <input type="hidden" id="edit-activity-id" value="">
+                        
+                        <!-- التسلسل الإداري المترابط -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">1. الإقليم <span class="text-red-500">*</span></label>
+                                <select id="act-region" onchange="populateDirectoratesDropdown('act-region', 'act-directorate', 'act-engineering')" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:border-water-600 bg-white">
+                                    <option value="">-- اختر الإقليم --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">2. الإدارة العامة / الإدارة <span class="text-red-500">*</span></label>
+                                <select id="act-directorate" onchange="populateEngineeringsDropdown('act-directorate', 'act-engineering')" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:border-water-600 bg-white">
+                                    <option value="">-- اختر الإدارة --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">3. الهندسة <span class="text-red-500">*</span></label>
+                                <select id="act-engineering" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:border-water-600 bg-white">
+                                    <option value="">-- اختر الهندسة --</option>
+                                </select>
+                            </div>
+                        </div>
 
-يجب عدم اختلاق أي بيانات غير موجودة في وصف النشاط، وإتاحة مراجعة النتائج واعتمادها بشريًا.
+                        <!-- التاريخ وحالة الإرسال -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">تاريخ تنفيذ النشاط / الإفادة <span class="text-red-500">*</span></label>
+                                <input type="date" id="act-date" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm focus:outline-none focus:border-water-600">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">موقف الإرسال <span class="text-red-500">*</span></label>
+                                <select id="act-status" onchange="toggleActivityFieldsByStatus()" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:border-water-600 bg-white font-semibold">
+                                    <option value="sent_with_activity">تم إرسال أنشطة منفذة</option>
+                                    <option value="sent_no_activity">تم الإرسال مع عدم وجود أنشطة (لا يوجد)</option>
+                                </select>
+                            </div>
+                        </div>
 
-### 5. التقارير الشهرية
-إنشاء تقرير شهري تلقائي يتضمن:
-- ملخصًا تنفيذيًا.
-- إجمالي الأنشطة.
-- موقف إرسال التقارير.
-- تفاصيل الأنشطة حسب الإقليم.
-- تفاصيل كل إدارة وهندسة.
-- صور الأنشطة مع التاريخ والوصف.
-- الرسوم البيانية والإحصائيات.
-- إمكانية تصدير التقرير PDF وExcel.
+                        <!-- تفاصيل النشاط (تظهر فقط عند وجود نشاط) -->
+                        <div id="activity-details-wrapper" class="space-y-5">
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-bold text-slate-700">وصف تفصيلي للنشاط (يمكن لصق نص رسالة WhatsApp مباشرة) <span class="text-red-500">*</span></label>
+                                    <button type="button" onclick="analyzeSingleDescriptionWithAI()" class="inline-flex items-center gap-1.5 text-xs font-bold text-water-700 bg-water-50 hover:bg-water-100 border border-water-200 px-3 py-1 rounded-lg transition">
+                                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                                        <span>استخراج التصنيف والمستفيدين بالذكاء الاصطناعي</span>
+                                    </button>
+                                </div>
+                                <textarea id="act-description" rows="4" placeholder="اكتب تفاصيل النشاط المنفذ (مثال: عقد ندوة إرشادية للمزارعين بزمام هندسة... بحضور 25 مزارعًا لمناقشة تطهير المساقي وصيانة شبكات الصرف المغطى)..." class="w-full rounded-xl border border-slate-300 p-3.5 text-sm focus:outline-none focus:border-water-600"></textarea>
+                            </div>
 
-يجب أن يكون التقرير قابلًا للطباعة بتنسيق رسمي مناسب للعرض على قيادات الهيئة.
+                            <!-- حقول التصنيف والمستفيدين (قابلة للمراجعة والتعديل البشري) -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200/70">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">تصنيف النشاط (يعتمد بشريًا)</label>
+                                    <input type="text" id="act-category" placeholder="مثال: ندوة إرشادية / مرور ميداني / تطهير وصيانة / تشكيل روابط" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm bg-white focus:outline-none focus:border-water-600">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">عدد المستفيدين (فقط إذا ورد في النص)</label>
+                                    <input type="number" id="act-beneficiaries" min="0" placeholder="اتركه فارغًا إذا لم يذكر العدد" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm bg-white focus:outline-none focus:border-water-600">
+                                </div>
+                            </div>
 
-### 6. أرشيف الصور
-إنشاء مكتبة صور منظمة، بحيث يمكن البحث عن الصور حسب:
-الإقليم، الإدارة، الهندسة، التاريخ، ونوع النشاط.
+                            <!-- إرفاق الصور المتعددة -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">إرفاق صور النشاط (صور متعددة مرتبطة بهذا النشاط فقط)</label>
+                                <div class="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:border-water-500 transition bg-slate-50/50">
+                                    <input type="file" id="act-images" multiple accept="image/*" onchange="handleImageSelection(event)" class="hidden">
+                                    <label for="act-images" class="cursor-pointer flex flex-col items-center justify-center">
+                                        <div class="w-11 h-11 rounded-full bg-water-100 text-water-700 flex items-center justify-center mb-2">
+                                            <i data-lucide="image-plus" class="w-6 h-6"></i>
+                                        </div>
+                                        <span class="text-sm font-bold text-slate-700">اضغط لاختيار الصور من الجهاز</span>
+                                        <span class="text-xs text-slate-500 mt-1">يتم ضغط الصور تلقائيًا لسرعة الحفظ والرفع إلى Google Drive</span>
+                                    </label>
+                                </div>
+                                <!-- معاينة الصور المختارة -->
+                                <div id="image-preview-grid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mt-4"></div>
+                            </div>
+                        </div>
 
-## رابعًا: التصميم والشكل العام
+                        <div class="flex justify-end pt-3 border-t border-slate-100">
+                            <button type="submit" id="submit-activity-btn" class="inline-flex items-center gap-2 bg-water-700 hover:bg-water-800 text-white font-bold text-sm px-6 py-3 rounded-xl shadow-sm transition">
+                                <i data-lucide="save" class="w-4 h-4"></i>
+                                <span>حفظ واعتماد البيان</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
 
-أريد تصميمًا احترافيًا باللغة العربية بالكامل، باتجاه RTL، ويكون مناسبًا لطبيعة العمل الحكومي.
+                <!-- سجل الأنشطة المسجلة مع البحث والتعديل والحذف -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+                        <h3 class="text-base font-bold text-slate-800">سجل الأنشطة والإفادات المسجلة</h3>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="filter-list-region" onchange="renderActivitiesTable()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">كل الأقاليم</option>
+                            </select>
+                            <input type="month" id="filter-list-month" onchange="renderActivitiesTable()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                            <input type="text" id="filter-list-search" oninput="renderActivitiesTable()" placeholder="بحث في الوصف أو الهندسة..." class="rounded-xl border border-slate-300 px-3 py-2 text-xs w-48">
+                        </div>
+                    </div>
 
-المطلوب:
-- واجهة عصرية وبسيطة.
-- ألوان رسمية هادئة مستوحاة من قطاع المياه.
-- قائمة جانبية واضحة.
-- بطاقات إحصائية.
-- جداول منظمة.
-- رسوم بيانية تفاعلية.
-- تصميم متجاوب مع الكمبيوتر والموبايل.
-- سهولة الاستخدام للموظفين غير المتخصصين في التكنولوجيا.
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-y border-slate-200 text-xs font-bold text-slate-600">
+                                    <th class="py-3 px-4">التاريخ</th>
+                                    <th class="py-3 px-4">الإقليم / الإدارة / الهندسة</th>
+                                    <th class="py-3 px-4">الحالة</th>
+                                    <th class="py-3 px-4">التفاصيل والتصنيف</th>
+                                    <th class="py-3 px-4">الصور</th>
+                                    <th class="py-3 px-4 text-center">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activities-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- يتم التعبئة ديناميكيًا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
 
-## خامسًا: التقنيات المقترحة
+            <!-- 3. متابعة الإرسال اليومي (Daily Tracking) -->
+            <section id="tab-tracking" class="tab-section hidden space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">موقف الالتزام بالإرسال اليومي</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">رصد دقيق للجهات التي أرسلت أنشطة، والتي أفادت بعدم وجود أنشطة، والمتأخرة عن الإرسال.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-slate-600 ml-1">تاريخ المتابعة:</label>
+                                <input type="date" id="tracking-date" onchange="renderTrackingView()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold bg-white">
+                            </div>
+                            <select id="tracking-region-filter" onchange="renderTrackingView()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">جميع الأقاليم (6)</option>
+                            </select>
+                            <select id="tracking-status-filter" onchange="renderTrackingView()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">جميع الحالات</option>
+                                <option value="sent_with_activity">تم إرسال أنشطة</option>
+                                <option value="sent_no_activity">تم الإرسال (لا يوجد أنشطة)</option>
+                                <option value="not_sent">لم يتم الإرسال (متأخر)</option>
+                            </select>
+                        </div>
+                    </div>
 
-ابدأ بالتقنيات التي يمكن تنفيذها بسهولة:
-- HTML.
-- CSS.
-- JavaScript.
-- Google Sheets لتخزين البيانات في المرحلة الأولى.
-- Google Drive لتخزين الصور.
-- Google Apps Script للربط بين الموقع والبيانات.
+                    <!-- ملخص سريع لليوم المحدد -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-emerald-800 block">تم إرسال أنشطة</span>
+                                <span class="text-2xl font-extrabold text-emerald-700" id="track-count-sent">0</span>
+                            </div>
+                            <i data-lucide="check-circle-2" class="w-8 h-8 text-emerald-500"></i>
+                        </div>
+                        <div class="p-4 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-sky-800 block">تم الإرسال (لا يوجد أنشطة)</span>
+                                <span class="text-2xl font-extrabold text-sky-700" id="track-count-none">0</span>
+                            </div>
+                            <i data-lucide="minus-circle" class="w-8 h-8 text-sky-500"></i>
+                        </div>
+                        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-rose-800 block">لم يتم الإرسال (متأخر)</span>
+                                <span class="text-2xl font-extrabold text-rose-700" id="track-count-missing">0</span>
+                            </div>
+                            <i data-lucide="x-circle" class="w-8 h-8 text-rose-500"></i>
+                        </div>
+                    </div>
 
-مع إمكانية التطوير مستقبلًا إلى قاعدة بيانات احترافية مثل Supabase.
+                    <!-- جدول متابعة الهندسات -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-right border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-y border-slate-200 text-xs font-bold text-slate-600">
+                                    <th class="py-3 px-4">الإقليم</th>
+                                    <th class="py-3 px-4">الإدارة</th>
+                                    <th class="py-3 px-4">الهندسة</th>
+                                    <th class="py-3 px-4">موقف الإرسال في هذا التاريخ</th>
+                                    <th class="py-3 px-4">إجراء سريع</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tracking-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- يتم التعبئة ديناميكيًا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
 
-## سادسًا: متطلبات مهمة
+            <!-- 4. تحليل الأنشطة بالذكاء الاصطناعي (AI Analysis) -->
+            <section id="tab-ai-analysis" class="tab-section hidden space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5 mb-6">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="p-1.5 rounded-lg bg-water-100 text-water-700"><i data-lucide="sparkles" class="w-5 h-5"></i></span>
+                                <h3 class="text-base font-bold text-slate-800">محرك التحليل الذكي للأنشطة (مدعوم بـ Gemini AI)</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">تحليل موضوعي صارم للنصوص الفعلية المسجلة دون اختلاق أي بيانات، مع إتاحة المراجعة البشرية والاعتماد.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <input type="month" id="ai-filter-month" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                            <select id="ai-filter-region" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">كل الأقاليم</option>
+                            </select>
+                            <button onclick="runBatchAIAnalysis()" id="run-ai-btn" class="inline-flex items-center gap-2 bg-water-700 hover:bg-water-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm">
+                                <i data-lucide="cpu" class="w-4 h-4"></i>
+                                <span>تشغيل التحليل الشامل واعتماد النتائج</span>
+                            </button>
+                        </div>
+                    </div>
 
-1. لا تستخدم بيانات تجريبية على أنها بيانات حقيقية.
-2. اجعل قوائم الإدارات والهندسات قابلة للتحديث.
-3. لا تفقد البيانات عند تحديث الموقع.
-4. اجعل الصور مرتبطة بالنشاط الصحيح.
-5. وفر إمكانية البحث والتصفية.
-6. أضف صلاحيات للمستخدمين في المراحل المتقدمة.
-7. اهتم بحماية البيانات وعدم إتاحتها للعامة.
-8. لا تدّعِ وجود ربط تلقائي مع WhatsApp قبل تنفيذ واختبار هذا الربط فعليًا.
-9. اجعل تصميم قاعدة البيانات قابلًا للتوسع.
+                    <!-- مؤشر التحميل -->
+                    <div id="ai-loading" class="hidden py-12 text-center">
+                        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-water-600 border-t-transparent mb-3"></div>
+                        <p class="text-sm font-bold text-slate-700">جاري تحليل الأنشطة واستخراج الموضوعات والمستفيدين بدقة...</p>
+                        <p class="text-xs text-slate-500 mt-1">يتم الالتزام الصارم بالنصوص المدخلة فقط.</p>
+                    </div>
 
-## سابعًا: طريقة العمل المطلوبة منك
+                    <!-- نتائج التحليل القابلة للمراجعة والتعديل -->
+                    <div id="ai-results-container" class="space-y-6">
+                        <div class="bg-slate-50 rounded-2xl p-6 text-center border border-slate-200/70">
+                            <i data-lucide="bot" class="w-10 h-10 text-slate-400 mx-auto mb-2"></i>
+                            <p class="text-sm font-bold text-slate-700">اختر الشهر أو الإقليم ثم اضغط على "تشغيل التحليل الشامل"</p>
+                            <p class="text-xs text-slate-500 mt-1">سيقوم النظام بتصنيف الأنشطة، حصر المستفيدين المذكورين، تجميع الأنشطة المتشابهة، وصياغة ملخص تنفيذي قابل للتعديل.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-أريد تنفيذ المشروع تدريجيًا، وليس مجرد تقديم أفكار نظرية.
+            <!-- 5. التقارير الشهرية الرسمية (Monthly Reports) -->
+            <section id="tab-reports" class="tab-section hidden space-y-6">
+                <!-- أدوات التحكم والتصدير (تختفي عند الطباعة) -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-600 ml-1">شهر التقرير:</label>
+                            <input type="month" id="report-month" onchange="generateMonthlyReport()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold bg-white">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-600 ml-1">نطاق التقرير:</label>
+                            <select id="report-region" onchange="generateMonthlyReport()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">تقرير شامل (جميع الأقاليم)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportReportToExcel()" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                            <span>تصدير Excel</span>
+                        </button>
+                        <button onclick="window.print()" class="inline-flex items-center gap-2 bg-water-800 hover:bg-water-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                            <span>طباعة / حفظ PDF رسمي</span>
+                        </button>
+                    </div>
+                </div>
 
-ابدأ أولًا بمراجعة ملف index.html التجريبي المرفق إن كان متاحًا، وقيّم تصميمه ووظائفه.
+                <!-- قالب التقرير الرسمي القابل للطباعة -->
+                <div id="official-report-sheet" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-8">
+                    <!-- ترويسة التقرير الحكومي -->
+                    <div class="border-b-2 border-water-800 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <p class="text-xs font-bold text-water-800">وزارة الموارد المائية والري</p>
+                            <p class="text-xs font-bold text-slate-600">الهيئة المصرية العامة لمشروعات الصرف</p>
+                            <h2 class="text-xl font-extrabold text-slate-900 mt-1">الإدارة العامة لإرشاد الصرف</h2>
+                        </div>
+                        <div class="text-left sm:text-left bg-slate-50 px-4 py-3 rounded-xl border border-slate-200">
+                            <span class="text-xs text-slate-500 block">تقرير الإنجازات والمتابعة الشهري</span>
+                            <span class="text-base font-extrabold text-water-900" id="rep-header-period">--</span>
+                            <span class="text-xs text-slate-600 block mt-0.5" id="rep-header-scope">جميع الأقاليم</span>
+                        </div>
+                    </div>
 
-بعد ذلك:
-1. حدد أوجه القصور.
-2. اقترح تحسينات عملية.
-3. ضع هيكل قاعدة البيانات.
-4. صمم الشاشات الرئيسية.
-5. ابدأ بكتابة الأكواد كاملة وقابلة للتشغيل.
-6. اشرح لي أين أضع كل ملف وكيف أشغله.
-7. اختبر الوظائف وتأكد من سلامة التنقل وحفظ البيانات.
-8. لا تنتقل إلى المرحلة التالية قبل التأكد من نجاح المرحلة الحالية.
+                    <!-- الملخص التنفيذي (قابل للتعديل قبل الطباعة) -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-base font-bold text-water-900 border-r-4 border-water-600 pr-3">أولًا: الملخص التنفيذي</h3>
+                            <span class="text-[11px] text-slate-400 no-print">(يمكنك تعديل النص أدناه مباشرة قبل الطباعة)</span>
+                        </div>
+                        <div id="rep-executive-summary" contenteditable="true" class="p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm leading-relaxed text-slate-700 focus:outline-none focus:border-water-500">
+                            بناءً على البيانات الواردة والموثقة بمنظومة المتابعة، يعرض هذا التقرير موقف تنفيذ أنشطة إرشاد الصرف ومستوى التزام الإدارات والهندسات بالإرسال خلال الفترة المحددة.
+                        </div>
+                    </div>
 
-**الهدف النهائي:** إنشاء نظام إلكتروني حقيقي يساعد الإدارة العامة لإرشاد الصرف على متابعة الأنشطة اليومية، وضبط موقف الإرسال، وتحليل الإنجازات، وإعداد تقارير شهرية مصورة ودقيقة بأقل تدخل يدوي ممكن.
+                    <!-- المؤشرات الإجمالية للتقرير -->
+                    <div>
+                        <h3 class="text-base font-bold text-water-900 border-r-4 border-water-600 pr-3 mb-3">ثانيًا: المؤشرات الإحصائية العامة</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div class="p-4 rounded-xl border border-slate-200 text-center">
+                                <span class="text-xs text-slate-500 block">إجمالي الأنشطة المنفذة</span>
+                                <span class="text-2xl font-extrabold text-water-800 mt-1 block" id="rep-stat-total">0</span>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 text-center">
+                                <span class="text-xs text-slate-500 block">إفادات عدم وجود أنشطة</span>
+                                <span class="text-2xl font-extrabold text-slate-700 mt-1 block" id="rep-stat-none">0</span>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 text-center">
+                                <span class="text-xs text-slate-500 block">إجمالي المستفيدين الموثقين</span>
+                                <span class="text-2xl font-extrabold text-emerald-700 mt-1 block" id="rep-stat-beneficiaries">0</span>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 text-center">
+                                <span class="text-xs text-slate-500 block">عدد الصور الموثقة</span>
+                                <span class="text-2xl font-extrabold text-amber-700 mt-1 block" id="rep-stat-images">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- جدول ملخص الأقاليم -->
+                    <div>
+                        <h3 class="text-base font-bold text-water-900 border-r-4 border-water-600 pr-3 mb-3">ثالثًا: موقف الأنشطة والإرسال حسب الأقاليم</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-right border border-slate-300 text-xs">
+                                <thead class="bg-water-50 text-water-950 font-bold">
+                                    <tr>
+                                        <th class="border border-slate-300 p-2.5">الإقليم</th>
+                                        <th class="border border-slate-300 p-2.5 text-center">عدد الإدارات</th>
+                                        <th class="border border-slate-300 p-2.5 text-center">عدد الهندسات</th>
+                                        <th class="border border-slate-300 p-2.5 text-center">الأنشطة المنفذة</th>
+                                        <th class="border border-slate-300 p-2.5 text-center">إفادات (لا يوجد)</th>
+                                        <th class="border border-slate-300 p-2.5 text-center">المستفيدون</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rep-regions-table"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- السجل التفصيلي للأنشطة والصور -->
+                    <div class="page-break">
+                        <h3 class="text-base font-bold text-water-900 border-r-4 border-water-600 pr-3 mb-4">رابعًا: البيان التفصيلي للأنشطة المنفذة والتوثيق المصور</h3>
+                        <div id="rep-detailed-activities" class="space-y-6"></div>
+                    </div>
+
+                    <!-- تذييل التوقيعات -->
+                    <div class="pt-8 mt-8 border-t border-slate-300 grid grid-cols-2 text-center text-xs font-bold text-slate-700">
+                        <div>
+                            <p>إعداد ومراجعة</p>
+                            <p class="mt-8 text-slate-400">........................................</p>
+                        </div>
+                        <div>
+                            <p>يعتمد،، مدير عام الإدارة العامة لإرشاد الصرف</p>
+                            <p class="mt-8 text-slate-400">........................................</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. أرشيف الصور (Photo Archive) -->
+            <section id="tab-gallery" class="tab-section hidden space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">مكتبة وأرشيف الصور الموثقة</h3>
+                            <p class="text-xs text-slate-500 mt-0.5">جميع الصور مرتبطة ببيانات النشاط والإقليم والهندسة والتاريخ.</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <select id="gal-region" onchange="populateDirectoratesDropdown('gal-region', 'gal-dir', 'gal-eng'); renderPhotoGallery();" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">كل الأقاليم</option>
+                            </select>
+                            <select id="gal-dir" onchange="populateEngineeringsDropdown('gal-dir', 'gal-eng'); renderPhotoGallery();" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">كل الإدارات</option>
+                            </select>
+                            <select id="gal-eng" onchange="renderPhotoGallery()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                                <option value="">كل الهندسات</option>
+                            </select>
+                            <input type="month" id="gal-month" onchange="renderPhotoGallery()" class="rounded-xl border border-slate-300 px-3 py-2 text-xs bg-white">
+                            <input type="text" id="gal-keyword" oninput="renderPhotoGallery()" placeholder="بحث بنوع النشاط..." class="rounded-xl border border-slate-300 px-3 py-2 text-xs w-40">
+                        </div>
+                    </div>
+
+                    <div id="gallery-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        <!-- يتم التعبئة ديناميكيًا -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 7. إدارة الهيكل الإداري (Administrative Structure) -->
+            <section id="tab-structure" class="tab-section hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- إضافة إدارة جديدة -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <h3 class="text-base font-bold text-slate-800 mb-1">إضافة إدارة جديدة تابعة لإقليم</h3>
+                        <p class="text-xs text-slate-500 mb-4">الأقاليم الستة ثابتة ومعتمدة. أضف الإدارات التابعة لكل إقليم.</p>
+                        <form onsubmit="addDirectorate(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">اختر الإقليم التابع له <span class="text-red-500">*</span></label>
+                                <select id="struct-dir-region" required class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm bg-white"></select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">اسم الإدارة <span class="text-red-500">*</span></label>
+                                <input type="text" id="struct-dir-name" required placeholder="مثال: الإدارة العامة لصرف شرق الدقهلية" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-water-700 hover:bg-water-800 text-white font-bold text-xs py-3 rounded-xl transition">
+                                + إضافة الإدارة إلى الهيكل
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- إضافة هندسة جديدة -->
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                        <h3 class="text-base font-bold text-slate-800 mb-1">إضافة هندسة جديدة تابعة لإدارة</h3>
+                        <p class="text-xs text-slate-500 mb-4">اختر الإقليم ثم الإدارة لإضافة الهندسات التابعة لها.</p>
+                        <form onsubmit="addEngineering(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">الإقليم <span class="text-red-500">*</span></label>
+                                    <select id="struct-eng-region" onchange="populateDirectoratesDropdown('struct-eng-region', 'struct-eng-dir')" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1">الإدارة <span class="text-red-500">*</span></label>
+                                    <select id="struct-eng-dir" required class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+                                        <option value="">-- اختر الإدارة --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">اسم الهندسة <span class="text-red-500">*</span></label>
+                                <input type="text" id="struct-eng-name" required placeholder="مثال: هندسة صرف المنصورة" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl transition">
+                                + إضافة الهندسة إلى الهيكل
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- عرض شجرة الهيكل الإداري بالكامل مع إمكانية التعديل والحذف -->
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">الهيكل الإداري المعتمد حاليًا (الأقاليم ← الإدارات ← الهندسات)</h3>
+                            <p class="text-xs text-slate-500">يمكنك تعديل مسمى أي إدارة أو هندسة أو حذفها في أي وقت دون تعديل الكود.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="exportStructureJSON()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50">تصدير نسخة احتياطية للهيكل</button>
+                        </div>
+                    </div>
+                    <div id="structure-tree-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- يتم التعبئة ديناميكيًا -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. الربط بـ Google Sheets & Google Drive -->
+            <section id="tab-connection" class="tab-section hidden space-y-6">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+                    <div>
+                        <h3 class="text-base font-bold text-slate-800">إعدادات الربط السحابي (Google Sheets & Google Drive)</h3>
+                        <p class="text-xs text-slate-500 mt-1">لضمان عدم فقدان البيانات عند تحديث المتصفح أو العمل من أجهزة متعددة، اربط المنظومة بـ Google Apps Script.</p>
+                    </div>
+
+                    <div class="bg-water-50/70 border border-water-200 rounded-2xl p-5 space-y-4">
+                        <label class="block text-xs font-bold text-water-900">رابط تطبيق الويب (Google Apps Script Web App URL)</label>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="url" id="gas-web-app-url" placeholder="https://script.google.com/macros/s/...../exec" class="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm bg-white dir-ltr text-left">
+                            <button onclick="saveGasUrl()" class="px-5 py-2.5 bg-water-700 hover:bg-water-800 text-white text-xs font-bold rounded-xl transition shrink-0">
+                                حفظ وتفعيل الربط
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-600">ملاحظة: يتم حفظ الرابط في الجلسة الحالية، وعند تفعيله تُقرأ وتُكتب كافة الإدارات والهندسات والأنشطة والصور مباشرة في ملف Google Sheets ومجلد Google Drive الخاصين بالإدارة.</p>
+                    </div>
+
+                    <div class="space-y-3">
+                        <h4 class="text-sm font-bold text-slate-800">خطوات التشغيل والربط الفعلي (للمرحلة الأولى):</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <li>أنشئ ملف <strong>Google Sheets</strong> جديد باسم: <code>قاعدة بيانات إرشاد الصرف</code>.</li>
+                            <li>أنشئ مجلدًا في <strong>Google Drive</strong> باسم: <code>صور أنشطة إرشاد الصرف</code> وانسخ معرف المجلد (Folder ID) من رابطه.</li>
+                            <li>من قائمة Google Sheets اختر: <strong>Extensions (الإضافات) ← Apps Script</strong>.</li>
+                            <li>الصق كود الخادم <code>Code.gs</code> (المرفق مع هذه الرسالة) وضع معرف مجلد Drive في السطر الأول.</li>
+                            <li>اضغط <strong>Deploy ← New deployment ← Web app</strong>، واختر التنفيذ بصفتك (Me) والصلاحية (Anyone with link / أو داخل نطاق مؤسستك)، ثم انسخ الرابط وضعه في الحقل أعلاه.</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- كود البرمجة التفاعلي للمنظومة -->
+    <script>
+        // ============================================================================
+        // 1. الحالة المركزية للمنظومة (بدون أي بيانات تجريبية وهمية - فقط الأقاليم المعتمدة)
+        // ============================================================================
+        const APPROVED_REGIONS = [
+            { id: 'REG_1', name: 'إقليم شرق الدلتا' },
+            { id: 'REG_2', name: 'إقليم القناة وسيناء' },
+            { id: 'REG_3', name: 'إقليم وسط الدلتا' },
+            { id: 'REG_4', name: 'إقليم غرب الدلتا' },
+            { id: 'REG_5', name: 'إقليم مصر الوسطى' },
+            { id: 'REG_6', name: 'إقليم مصر العليا' }
+        ];
+
+        // مخزن البيانات في الذاكرة (يتزامن مع Google Sheets عند توفير الرابط)
+        let appState = {
+            gasUrl: '',
+            directorates: [], // { id, regionId, name }
+            engineerings: [], // { id, dirId, name }
+            activities: [],   // { id, date, regionId, dirId, engId, status, description, category, beneficiaries, images: [] }
+            currentUploadedImages: [] // صور مؤقتة أثناء تعبئة النموذج
+        };
+
+        let regionsChartInstance = null;
+
+        // ============================================================================
+        // 2. التهيئة عند تحميل الصفحة
+        // ============================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // ضبط التواريخ الافتراضية لليوم والشهر الحاليين
+            const todayStr = new Date().toISOString().split('T')[0];
+            const monthStr = todayStr.slice(0, 7);
+            
+            document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('ar-EG', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+            
+            document.getElementById('act-date').value = todayStr;
+            document.getElementById('tracking-date').value = todayStr;
+            document.getElementById('report-month').value = monthStr;
+            document.getElementById('ai-filter-month').value = monthStr;
+            document.getElementById('filter-list-month').value = monthStr;
+
+            populateAllRegionSelects();
+            refreshAllViews();
+        });
+
+        // ============================================================================
+        // 3. إدارة التنقل بين الشاشات وإشعارات النظام
+        // ============================================================================
+        function switchTab(tabId) {
+            // إخفاء جميع الأقسام
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+            // إظهار القسم المطلوب
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.remove('hidden');
+
+            // تحديث حالة الأزرار في القائمة الجانبية
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.remove('text-water-100', 'hover:bg-water-800');
+                    btn.classList.add('bg-water-700', 'text-white');
+                } else {
+                    btn.classList.add('text-water-100', 'hover:bg-water-800');
+                    btn.classList.remove('bg-water-700', 'text-white');
+                }
+            });
+
+            // تحديث العنوان العلوي
+            const titles = {
+                'dashboard': ['لوحة التحكم الرئيسية', 'مؤشرات الأداء اللحظية وتوزيع الأنشطة على الأقاليم الستة'],
+                'register': ['تسجيل وتعديل الأنشطة', 'إدخال الأنشطة اليومية والصور المرفقة وموقف الإرسال'],
+                'tracking': ['متابعة الإرسال اليومي', 'رصد التزام الإدارات والهندسات وتحديد الجهات المتأخرة'],
+                'ai-analysis': ['تحليل الأنشطة الذكي', 'تصنيف الأنشطة واستخراج المستفيدين والملخصات التنفيذية'],
+                'reports': ['التقارير الشهرية الرسمية', 'إصدار وطباعة التقارير المصورة المعتمدة للعرض على القيادات'],
+                'gallery': ['أرشيف الصور الموثق', 'البحث والتصفية في مكتبة الصور حسب الجهة والتاريخ والنشاط'],
+                'structure': ['إدارة الهيكل الإداري', 'إضافة وتعديل الإدارات والهندسات التابعة للأقاليم الستة'],
+                'connection': ['الربط السحابي وقواعد البيانات', 'إعدادات المزامنة مع Google Sheets و Google Drive']
+            };
+            if (titles[tabId]) {
+                document.getElementById('page-title').textContent = titles[tabId][0];
+                document.getElementById('page-subtitle').textContent = titles[tabId][1];
+            }
+
+            // إغلاق القائمة الجانبية في الشاشات الصغيرة
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('translate-x-full');
+            }
+
+            // تحديث بيانات الشاشة المفتوحة
+            if (tabId === 'dashboard') updateDashboard();
+            if (tabId === 'tracking') renderTrackingView();
+            if (tabId === 'reports') generateMonthlyReport();
+            if (tabId === 'gallery') renderPhotoGallery();
+            if (tabId === 'structure') renderStructureTree();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('translate-x-full');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = {
+                success: 'bg-emerald-800 text-white border-emerald-700',
+                error: 'bg-rose-800 text-white border-rose-700',
+                info: 'bg-water-800 text-white border-water-700',
+                warning: 'bg-amber-700 text-white border-amber-600'
+            };
+            toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg border text-xs font-bold flex items-center justify-between gap-3 pointer-events-auto transition-all duration-300`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        let confirmCallback = null;
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmCallback = onConfirm;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            confirmCallback = null;
+        }
+
+        document.getElementById('confirm-action-btn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        });
+
+        // ============================================================================
+        // 4. إدارة الهيكل الإداري المرن (الأقاليم -> الإدارات -> الهندسات)
+        // ============================================================================
+        function populateAllRegionSelects() {
+            const selectIds = [
+                'act-region', 'filter-list-region', 'tracking-region-filter',
+                'ai-filter-region', 'report-region', 'gal-region',
+                'struct-dir-region', 'struct-eng-region'
+            ];
+            selectIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const firstOption = el.options[0] ? el.options[0].outerHTML : '<option value="">-- اختر الإقليم --</option>';
+                el.innerHTML = firstOption + APPROVED_REGIONS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+            });
+        }
+
+        function populateDirectoratesDropdown(regionSelectId, dirSelectId, engSelectId = null) {
+            const regionId = document.getElementById(regionSelectId).value;
+            const dirSelect = document.getElementById(dirSelectId);
+            const defaultText = dirSelectId.startsWith('gal-') ? 'كل الإدارات' : '-- اختر الإدارة --';
+            
+            const filteredDirs = appState.directorates.filter(d => d.regionId === regionId);
+            dirSelect.innerHTML = `<option value="">${defaultText}</option>` + 
+                filteredDirs.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+
+            if (engSelectId) {
+                const engSelect = document.getElementById(engSelectId);
+                const engDefault = engSelectId.startsWith('gal-') ? 'كل الهندسات' : '-- اختر الهندسة --';
+                engSelect.innerHTML = `<option value="">${engDefault}</option>`;
+            }
+        }
+
+        function populateEngineeringsDropdown(dirSelectId, engSelectId) {
+            const dirId = document.getElementById(dirSelectId).value;
+            const engSelect = document.getElementById(engSelectId);
+            const defaultText = engSelectId.startsWith('gal-') ? 'كل الهندسات' : '-- اختر الهندسة --';
+
+            const filteredEngs = appState.engineerings.filter(e => e.dirId === dirId);
+            engSelect.innerHTML = `<option value="">${defaultText}</option>` + 
+                filteredEngs.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        }
+
+        async function addDirectorate(e) {
+            e.preventDefault();
+            const regionId = document.getElementById('struct-dir-region').value;
+            const name = document.getElementById('struct-dir-name').value.trim();
+            if (!regionId || !name) return;
+
+            const newDir = {
+                id: 'DIR_' + Date.now(),
+                regionId: regionId,
+                name: name
+            };
+
+            appState.directorates.push(newDir);
+            document.getElementById('struct-dir-name').value = '';
+            showToast('تمت إضافة الإدارة بنجاح', 'success');
+            
+            await pushDataToCloud('saveDirectorate', newDir);
+            refreshAllViews();
+        }
+
+        async function addEngineering(e) {
+            e.preventDefault();
+            const dirId = document.getElementById('struct-eng-dir').value;
+            const name = document.getElementById('struct-eng-name').value.trim();
+            if (!dirId || !name) {
+                showToast('يرجى اختيار الإقليم والإدارة أولاً', 'warning');
+                return;
+            }
+
+            const newEng = {
+                id: 'ENG_' + Date.now(),
+                dirId: dirId,
+                name: name
+            };
+
+            appState.engineerings.push(newEng);
+            document.getElementById('struct-eng-name').value = '';
+            showToast('تمت إضافة الهندسة بنجاح', 'success');
+
+            await pushDataToCloud('saveEngineering', newEng);
+            refreshAllViews();
+        }
+
+        function deleteDirectorate(dirId) {
+            openConfirmModal(
+                'حذف إدارة',
+                'سيتم حذف هذه الإدارة وجميع الهندسات المرتبطة بها من الهيكل الإداري. هل أنت متأكد؟',
+                async () => {
+                    appState.directorates = appState.directorates.filter(d => d.id !== dirId);
+                    appState.engineerings = appState.engineerings.filter(e => e.dirId !== dirId);
+                    showToast('تم حذف الإدارة من الهيكل', 'info');
+                    await pushDataToCloud('deleteDirectorate', { id: dirId });
+                    refreshAllViews();
+                }
+            );
+        }
+
+        function deleteEngineering(engId) {
+            openConfirmModal(
+                'حذف هندسة',
+                'هل أنت متأكد من حذف هذه الهندسة من الهيكل الإداري؟',
+                async () => {
+                    appState.engineerings = appState.engineerings.filter(e => e.id !== engId);
+                    showToast('تم حذف الهندسة', 'info');
+                    await pushDataToCloud('deleteEngineering', { id: engId });
+                    refreshAllViews();
+                }
+            );
+        }
+
+        function renderStructureTree() {
+            const container = document.getElementById('structure-tree-container');
+            container.innerHTML = APPROVED_REGIONS.map(region => {
+                const dirs = appState.directorates.filter(d => d.regionId === region.id);
+                return `
+                    <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2.5 mb-3">
+                            <h4 class="font-bold text-sm text-water-900 flex items-center gap-2">
+                                <i data-lucide="map" class="w-4 h-4 text-water-600"></i>
+                                ${region.name}
+                            </h4>
+                            <span class="text-[11px] font-bold bg-water-100 text-water-800 px-2 py-0.5 rounded-full">${dirs.length} إدارات</span>
+                        </div>
+                        ${dirs.length === 0 ? `<p class="text-xs text-slate-400 py-3 text-center">لم يتم إضافة إدارات لهذا الإقليم بعد</p>` : `
+                            <div class="space-y-3">
+                                ${dirs.map(dir => {
+                                    const engs = appState.engineerings.filter(e => e.dirId === dir.id);
+                                    return `
+                                        <div class="bg-white p-3 rounded-xl border border-slate-200/80 shadow-xs">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <span class="text-xs font-bold text-slate-800">${dir.name}</span>
+                                                <button onclick="deleteDirectorate('${dir.id}')" class="text-slate-400 hover:text-rose-600 p-1" title="حذف الإدارة">
+                                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                                </button>
+                                            </div>
+                                            ${engs.length === 0 ? `<p class="text-[11px] text-slate-400">لا توجد هندسات مضافة</p>` : `
+                                                <ul class="space-y-1 pr-3 border-r-2 border-water-200">
+                                                    ${engs.map(eng => `
+                                                        <li class="flex items-center justify-between text-xs text-slate-600 py-0.5">
+                                                            <span>${eng.name}</span>
+                                                            <button onclick="deleteEngineering('${eng.id}')" class="text-slate-300 hover:text-rose-600" title="حذف الهندسة">
+                                                                <i data-lucide="x" class="w-3 h-3"></i>
+                                                            </button>
+                                                        </li>
+                                                    `).join('')}
+                                                </ul>
+                                            `}
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function exportStructureJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+                regions: APPROVED_REGIONS,
+                directorates: appState.directorates,
+                engineerings: appState.engineerings
+            }, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", "هيكل_إرشاد_الصرف.json");
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        // ============================================================================
+        // 5. تسجيل وتعديل الأنشطة وإدارة الصور المرفقة
+        // ============================================================================
+        function toggleActivityFieldsByStatus() {
+            const status = document.getElementById('act-status').value;
+            const wrapper = document.getElementById('activity-details-wrapper');
+            const descInput = document.getElementById('act-description');
+            if (status === 'sent_no_activity') {
+                wrapper.classList.add('hidden');
+                descInput.removeAttribute('required');
+            } else {
+                wrapper.classList.remove('hidden');
+                descInput.setAttribute('required', 'required');
+            }
+        }
+
+        // ضغط الصور وتحويلها لمعاينة سريعة ورفع آمن
+        function handleImageSelection(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1000;
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.78);
+                        
+                        appState.currentUploadedImages.push({
+                            id: 'IMG_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                            name: file.name,
+                            url: compressedDataUrl
+                        });
+                        renderUploadedImagesPreview();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function renderUploadedImagesPreview() {
+            const grid = document.getElementById('image-preview-grid');
+            grid.innerHTML = appState.currentUploadedImages.map((img, idx) => `
+                <div class="relative group rounded-xl overflow-hidden border border-slate-200 aspect-square bg-slate-100">
+                    <img src="${img.url}" alt="صورة النشاط" class="w-full h-full object-cover">
+                    <button type="button" onclick="removePreviewImage(${idx})" class="absolute top-1.5 left-1.5 bg-rose-600 text-white p-1 rounded-lg opacity-90 hover:opacity-100 shadow">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function removePreviewImage(index) {
+            appState.currentUploadedImages.splice(index, 1);
+            renderUploadedImagesPreview();
+        }
+
+        async function handleActivitySubmit(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-activity-id').value;
+            const regionId = document.getElementById('act-region').value;
+            const dirId = document.getElementById('act-directorate').value;
+            const engId = document.getElementById('act-engineering').value;
+            const date = document.getElementById('act-date').value;
+            const status = document.getElementById('act-status').value;
+            const description = status === 'sent_with_activity' ? document.getElementById('act-description').value.trim() : 'لا يوجد أنشطة منفذة في هذا التاريخ.';
+            const category = status === 'sent_with_activity' ? (document.getElementById('act-category').value.trim() || 'نشاط إرشادي عام') : 'إفادة عدم وجود أنشطة';
+            const benVal = document.getElementById('act-beneficiaries').value;
+            const beneficiaries = (status === 'sent_with_activity' && benVal !== '') ? parseInt(benVal, 10) : null;
+
+            const activityObj = {
+                id: editId || ('ACT_' + Date.now()),
+                date,
+                regionId,
+                dirId,
+                engId,
+                status,
+                description,
+                category,
+                beneficiaries,
+                images: status === 'sent_with_activity' ? [...appState.currentUploadedImages] : [],
+                updatedAt: new Date().toISOString()
+            };
+
+            const btn = document.getElementById('submit-activity-btn');
+            btn.disabled = true;
+            btn.innerHTML = `<span>جاري الحفظ...</span>`;
+
+            if (editId) {
+                const idx = appState.activities.findIndex(a => a.id === editId);
+                if (idx !== -1) appState.activities[idx] = activityObj;
+                showToast('تم تحديث بيانات النشاط بنجاح', 'success');
+            } else {
+                appState.activities.unshift(activityObj);
+                showToast('تم تسجيل النشاط وربط الصور بنجاح', 'success');
+            }
+
+            await pushDataToCloud('saveActivity', activityObj);
+
+            btn.disabled = false;
+            btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i><span>حفظ واعتماد البيان</span>`;
+            resetActivityForm();
+            refreshAllViews();
+        }
+
+        function editActivity(id) {
+            const act = appState.activities.find(a => a.id === id);
+            if (!act) return;
+
+            switchTab('register');
+            document.getElementById('edit-activity-id').value = act.id;
+            document.getElementById('form-mode-title').textContent = 'تعديل بيانات نشاط مسجل';
+            document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+            document.getElementById('act-region').value = act.regionId;
+            populateDirectoratesDropdown('act-region', 'act-directorate', 'act-engineering');
+            document.getElementById('act-directorate').value = act.dirId;
+            populateEngineeringsDropdown('act-directorate', 'act-engineering');
+            document.getElementById('act-engineering').value = act.engId;
+
+            document.getElementById('act-date').value = act.date;
+            document.getElementById('act-status').value = act.status;
+            toggleActivityFieldsByStatus();
+
+            if (act.status === 'sent_with_activity') {
+                document.getElementById('act-description').value = act.description;
+                document.getElementById('act-category').value = act.category || '';
+                document.getElementById('act-beneficiaries').value = act.beneficiaries !== null ? act.beneficiaries : '';
+                appState.currentUploadedImages = [...(act.images || [])];
+                renderUploadedImagesPreview();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteActivity(id) {
+            openConfirmModal(
+                'حذف سجل نشاط',
+                'هل أنت متأكد من حذف هذا السجل والصور المرتبطة به نهائيًا؟',
+                async () => {
+                    appState.activities = appState.activities.filter(a => a.id !== id);
+                    showToast('تم حذف السجل بنجاح', 'info');
+                    await pushDataToCloud('deleteActivity', { id });
+                    refreshAllViews();
+                }
+            );
+        }
+
+        function resetActivityForm() {
+            document.getElementById('activity-form').reset();
+            document.getElementById('edit-activity-id').value = '';
+            document.getElementById('form-mode-title').textContent = 'تسجيل نشاط يومي جديد (وارد من WhatsApp أو الميدان)';
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+            document.getElementById('act-date').value = new Date().toISOString().split('T')[0];
+            appState.currentUploadedImages = [];
+            renderUploadedImagesPreview();
+            toggleActivityFieldsByStatus();
+        }
+
+        function renderActivitiesTable() {
+            const tbody = document.getElementById('activities-table-body');
+            const regFilter = document.getElementById('filter-list-region').value;
+            const monthFilter = document.getElementById('filter-list-month').value;
+            const searchFilter = document.getElementById('filter-list-search').value.toLowerCase().trim();
+
+            const filtered = appState.activities.filter(act => {
+                if (regFilter && act.regionId !== regFilter) return false;
+                if (monthFilter && !act.date.startsWith(monthFilter)) return false;
+                if (searchFilter) {
+                    const engName = getEngineeringName(act.engId).toLowerCase();
+                    const dirName = getDirectorateName(act.dirId).toLowerCase();
+                    const desc = act.description.toLowerCase();
+                    if (!engName.includes(searchFilter) && !dirName.includes(searchFilter) && !desc.includes(searchFilter)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-xs text-slate-400">لا توجد سجلات مطابقة لمعايير البحث الحالية.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(act => `
+                <tr class="hover:bg-slate-50/80 transition">
+                    <td class="py-3 px-4 text-xs font-bold text-slate-700 whitespace-nowrap">${act.date}</td>
+                    <td class="py-3 px-4">
+                        <div class="text-xs font-bold text-water-900">${getRegionName(act.regionId)}</div>
+                        <div class="text-[11px] text-slate-600">${getDirectorateName(act.dirId)} ← <span class="font-semibold">${getEngineeringName(act.engId)}</span></div>
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        ${act.status === 'sent_with_activity' 
+                            ? `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">تم إرسال نشاط</span>`
+                            : `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800">لا يوجد أنشطة</span>`}
+                    </td>
+                    <td class="py-3 px-4 max-w-md">
+                        ${act.status === 'sent_with_activity' ? `
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">${act.category || 'عام'}</span>
+                                ${act.beneficiaries !== null ? `<span class="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded">المستفيدون: ${act.beneficiaries}</span>` : ''}
+                            </div>
+                            <p class="text-xs text-slate-700 line-clamp-2">${act.description}</p>
+                        ` : `<span class="text-xs text-slate-400 italic">إفادة رسمية بعدم وجود أنشطة</span>`}
+                    </td>
+                    <td class="py-3 px-4 whitespace-nowrap">
+                        <span class="text-xs font-bold text-slate-600">${(act.images || []).length} صورة</span>
+                    </td>
+                    <td class="py-3 px-4 text-center whitespace-nowrap">
+                        <button onclick="editActivity('${act.id}')" class="p-1.5 text-water-600 hover:bg-water-50 rounded-lg transition" title="تعديل">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        </button>
+                        <button onclick="deleteActivity('${act.id}')" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="حذف">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // ============================================================================
+        // 6. متابعة الإرسال اليومي (الحالات الثلاث)
+        // ============================================================================
+        function renderTrackingView() {
+            const targetDate = document.getElementById('tracking-date').value;
+            const regFilter = document.getElementById('tracking-region-filter').value;
+            const statusFilter = document.getElementById('tracking-status-filter').value;
+            const tbody = document.getElementById('tracking-table-body');
+
+            let sentCount = 0;
+            let noneCount = 0;
+            let missingCount = 0;
+
+            const rows = [];
+
+            appState.engineerings.forEach(eng => {
+                const dir = appState.directorates.find(d => d.id === eng.dirId);
+                if (!dir) return;
+                if (regFilter && dir.regionId !== regFilter) return;
+
+                // البحث عن سجل لهذه الهندسة في التاريخ المحدد
+                const dayRecords = appState.activities.filter(a => a.engId === eng.id && a.date === targetDate);
+                let status = 'not_sent';
+                if (dayRecords.some(r => r.status === 'sent_with_activity')) {
+                    status = 'sent_with_activity';
+                    sentCount++;
+                } else if (dayRecords.some(r => r.status === 'sent_no_activity')) {
+                    status = 'sent_no_activity';
+                    noneCount++;
+                } else {
+                    missingCount++;
+                }
+
+                if (statusFilter && status !== statusFilter) return;
+
+                rows.push({
+                    regionId: dir.regionId,
+                    regionName: getRegionName(dir.regionId),
+                    dirId: dir.id,
+                    dirName: dir.name,
+                    engId: eng.id,
+                    engName: eng.name,
+                    status: status
+                });
+            });
+
+            document.getElementById('track-count-sent').textContent = sentCount;
+            document.getElementById('track-count-none').textContent = noneCount;
+            document.getElementById('track-count-missing').textContent = missingCount;
+
+            if (appState.engineerings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-xs text-slate-400">يرجى إضافة الإدارات والهندسات أولاً من قسم "إدارة الهيكل الإداري" لتفعيل المتابعة اليومية.</td></tr>`;
+                return;
+            }
+
+            if (rows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-xs text-slate-400">لا توجد جهات مطابقة للتصفية المحددة.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(row => {
+                let badge = '';
+                if (row.status === 'sent_with_activity') {
+                    badge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i data-lucide="check" class="w-3.5 h-3.5"></i> تم إرسال أنشطة</span>`;
+                } else if (row.status === 'sent_no_activity') {
+                    badge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-sky-100 text-sky-800"><i data-lucide="minus" class="w-3.5 h-3.5"></i> تم الإرسال (لا يوجد أنشطة)</span>`;
+                } else {
+                    badge = `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> لم يتم الإرسال</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-3 px-4 text-xs font-bold text-slate-700">${row.regionName}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${row.dirName}</td>
+                        <td class="py-3 px-4 text-xs font-bold text-slate-800">${row.engName}</td>
+                        <td class="py-3 px-4">${badge}</td>
+                        <td class="py-3 px-4">
+                            <button onclick="quickRegisterForUnit('${row.regionId}', '${row.dirId}', '${row.engId}', '${targetDate}')" class="text-xs font-bold text-water-600 hover:underline">
+                                تسجيل موقف / نشاط
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function quickRegisterForUnit(regionId, dirId, engId, date) {
+            switchTab('register');
+            resetActivityForm();
+            document.getElementById('act-region').value = regionId;
+            populateDirectoratesDropdown('act-region', 'act-directorate', 'act-engineering');
+            document.getElementById('act-directorate').value = dirId;
+            populateEngineeringsDropdown('act-directorate', 'act-engineering');
+            document.getElementById('act-engineering').value = engId;
+            document.getElementById('act-date').value = date;
+        }
+
+        // ============================================================================
+        // 7. محرك الذكاء الاصطناعي (Gemini API) لتحليل الأنشطة بدقة ودون اختلاق
+        // ============================================================================
+        async function callGeminiAPI(promptText, systemInstructionText, isJson = false) {
+            const apiKey = ""; // يتم حقنه تلقائيًا في بيئة التشغيل
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                systemInstruction: { parts: [{ text: systemInstructionText }] }
+            };
+
+            if (isJson) {
+                payload.generationConfig = { responseMimeType: "application/json" };
+            }
+
+            let delay = 1000;
+            for (let attempt = 0; attempt < 4; attempt++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    const result = await response.json();
+                    return result?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+                } catch (err) {
+                    if (attempt === 3) throw err;
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // تحليل نشاط واحد أثناء التسجيل
+        async function analyzeSingleDescriptionWithAI() {
+            const desc = document.getElementById('act-description').value.trim();
+            if (!desc) {
+                showToast('يرجى كتابة وصف النشاط أولاً ليتم تحليله', 'warning');
+                return;
+            }
+
+            showToast('جاري استخراج التصنيف وعدد المستفيدين من النص...', 'info');
+            const sysPrompt = `أنت محلل بيانات حكومي في الإدارة العامة لإرشاد الصرف. مهمتك استخراج التصنيف وعدد المستفيدين من وصف النشاط بدقة متناهية.
+قواعد صارمة:
+1. لا تختلق أو تقدر أي رقم غير مذكور صراحة في النص. إذا لم يذكر عدد المستفيدين أو الحضور، أرجع null.
+2. أعد النتيجة بصيغة JSON فقط: {"category": "تصنيف موجز للنشاط", "beneficiaries": رقم_صحيح_أو_null}`;
+
+            try {
+                const raw = await callGeminiAPI(`وصف النشاط:\n${desc}`, sysPrompt, true);
+                const parsed = JSON.parse(raw);
+                if (parsed.category) document.getElementById('act-category').value = parsed.category;
+                if (parsed.beneficiaries !== null && parsed.beneficiaries !== undefined) {
+                    document.getElementById('act-beneficiaries').value = parsed.beneficiaries;
+                } else {
+                    document.getElementById('act-beneficiaries').value = '';
+                }
+                showToast('تم الاستخراج بنجاح. يرجى مراجعة البيانات واعتمادها.', 'success');
+            } catch (error) {
+                showToast('تعذر الاتصال بمحرك الذكاء الاصطناعي حاليًا، يمكنك الإدخال يدويًا.', 'error');
+            }
+        }
+
+        // التحليل الشامل لمجموعة أنشطة
+        async function runBatchAIAnalysis() {
+            const month = document.getElementById('ai-filter-month').value;
+            const regionId = document.getElementById('ai-filter-region').value;
+
+            const targetActivities = appState.activities.filter(a => {
+                if (a.status !== 'sent_with_activity') return false;
+                if (month && !a.date.startsWith(month)) return false;
+                if (regionId && a.regionId !== regionId) return false;
+                return true;
+            });
+
+            if (targetActivities.length === 0) {
+                showToast('لا توجد أنشطة فعلية مسجلة في الفترة/الإقليم المحدد لتحليلها.', 'warning');
+                return;
+            }
+
+            const loadingEl = document.getElementById('ai-loading');
+            const resultsEl = document.getElementById('ai-results-container');
+            loadingEl.classList.remove('hidden');
+            resultsEl.innerHTML = '';
+
+            const recordsText = targetActivities.map((a, i) => 
+                `[${i + 1}] الإقليم: ${getRegionName(a.regionId)} | الهندسة: ${getEngineeringName(a.engId)} | التاريخ: ${a.date} | الوصف: ${a.description}`
+            ).join('\n');
+
+            const sysPrompt = `أنت خبير تحليل بيانات بالإدارة العامة لإرشاد الصرف. قم بتحليل قائمة الأنشطة المرفقة وإخراج النتيجة بصيغة JSON بالهيكل التالي:
+{
+  "executiveSummary": "ملخص تنفيذي رسمي دقيق يلخص ما تم تنفيذه فعليًا دون مبالغة أو اختلاق",
+  "mainTopics": ["موضوع رئيسي 1", "موضوع رئيسي 2"],
+  "groupedCategories": [
+    {"categoryName": "اسم التصنيف", "count": 0, "details": "وصف موجز للأنشطة المتشابهة ضمن هذا التصنيف"}
+  ],
+  "extractedBeneficiariesTotal": "مجموع المستفيدين المذكورين صراحة في النصوص فقط (أو عبارة: لم يرد ذكر أعداد محددة)"
+}
+تنبيه صارم: يُمنع منعًا باتًا اختلاق أي أرقام أو مواقع أو أنشطة غير واردة في النص.`;
+
+            try {
+                const raw = await callGeminiAPI(recordsText, sysPrompt, true);
+                const data = JSON.parse(raw);
+
+                loadingEl.classList.add('hidden');
+                resultsEl.innerHTML = `
+                    <div class="bg-water-50/60 border border-water-200 rounded-2xl p-5 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <h4 class="font-bold text-sm text-water-900">الملخص التنفيذي المقترح (قابل للتعديل والاعتماد في التقرير الشهري)</h4>
+                            <button onclick="adoptSummaryToReport()" class="px-3 py-1.5 bg-water-700 hover:bg-water-800 text-white text-xs font-bold rounded-xl transition">
+                                اعتماد الملخص في التقرير الشهري
+                            </button>
+                        </div>
+                        <textarea id="ai-generated-summary-box" rows="4" class="w-full rounded-xl border border-water-300 p-3 text-sm bg-white leading-relaxed">${data.executiveSummary || ''}</textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5">
+                            <h4 class="font-bold text-sm text-slate-800 mb-3">تصنيف وتجميع الأنشطة المتشابهة</h4>
+                            <div class="space-y-2.5">
+                                ${(data.groupedCategories || []).map(c => `
+                                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                        <div class="flex items-center justify-between font-bold text-xs text-water-900 mb-1">
+                                            <span>${c.categoryName}</span>
+                                            <span class="bg-water-100 px-2 py-0.5 rounded-full">${c.count} نشاط</span>
+                                        </div>
+                                        <p class="text-xs text-slate-600">${c.details}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+                            <div>
+                                <h4 class="font-bold text-sm text-slate-800 mb-2">الموضوعات الرئيسية المستخرجة</h4>
+                                <div class="flex flex-wrap gap-2">
+                                    ${(data.mainTopics || []).map(t => `<span class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-semibold">${t}</span>`).join('')}
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-slate-100">
+                                <h4 class="font-bold text-sm text-slate-800 mb-1">إجمالي المستفيدين الموثقين بالنصوص</h4>
+                                <p class="text-lg font-extrabold text-water-800">${data.extractedBeneficiariesTotal}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (err) {
+                loadingEl.classList.add('hidden');
+                showToast('حدث خطأ أثناء التحليل بالذكاء الاصطناعي. يرجى المحاولة مرة أخرى.', 'error');
+            }
+        }
+
+        function adoptSummaryToReport() {
+            const box = document.getElementById('ai-generated-summary-box');
+            if (box) {
+                document.getElementById('rep-executive-summary').textContent = box.value;
+                showToast('تم نقل الملخص المعتمد إلى صفحة التقرير الشهري بنجاح', 'success');
+            }
+        }
+
+        // ============================================================================
+        // 8. التقارير الشهرية الرسمية وتصدير Excel
+        // ============================================================================
+        function generateMonthlyReport() {
+            const month = document.getElementById('report-month').value;
+            const regFilter = document.getElementById('report-region').value;
+
+            document.getElementById('rep-header-period').textContent = month || 'كافة الفترات';
+            document.getElementById('rep-header-scope').textContent = regFilter ? getRegionName(regFilter) : 'جميع الأقاليم الستة';
+
+            const filtered = appState.activities.filter(a => {
+                if (month && !a.date.startsWith(month)) return false;
+                if (regFilter && a.regionId !== regFilter) return false;
+                return true;
+            });
+
+            const actualActivities = filtered.filter(a => a.status === 'sent_with_activity');
+            const noActivities = filtered.filter(a => a.status === 'sent_no_activity');
+            const totalBeneficiaries = actualActivities.reduce((sum, a) => sum + (a.beneficiaries || 0), 0);
+            const totalImages = actualActivities.reduce((sum, a) => sum + (a.images ? a.images.length : 0), 0);
+
+            document.getElementById('rep-stat-total').textContent = actualActivities.length;
+            document.getElementById('rep-stat-none').textContent = noActivities.length;
+            document.getElementById('rep-stat-beneficiaries').textContent = totalBeneficiaries;
+            document.getElementById('rep-stat-images').textContent = totalImages;
+
+            // جدول الأقاليم
+            const targetRegions = regFilter ? APPROVED_REGIONS.filter(r => r.id === regFilter) : APPROVED_REGIONS;
+            document.getElementById('rep-regions-table').innerHTML = targetRegions.map(reg => {
+                const regDirs = appState.directorates.filter(d => d.regionId === reg.id);
+                const regEngs = appState.engineerings.filter(e => regDirs.some(d => d.id === e.dirId));
+                const regActs = actualActivities.filter(a => a.regionId === reg.id);
+                const regNone = noActivities.filter(a => a.regionId === reg.id);
+                const regBen = regActs.reduce((s, a) => s + (a.beneficiaries || 0), 0);
+
+                return `
+                    <tr>
+                        <td class="border border-slate-300 p-2 font-bold">${reg.name}</td>
+                        <td class="border border-slate-300 p-2 text-center">${regDirs.length}</td>
+                        <td class="border border-slate-300 p-2 text-center">${regEngs.length}</td>
+                        <td class="border border-slate-300 p-2 text-center font-bold text-water-800">${regActs.length}</td>
+                        <td class="border border-slate-300 p-2 text-center">${regNone.length}</td>
+                        <td class="border border-slate-300 p-2 text-center">${regBen}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // التفاصيل والصور
+            const detailsContainer = document.getElementById('rep-detailed-activities');
+            if (actualActivities.length === 0) {
+                detailsContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-6 border border-dashed border-slate-300 rounded-xl">لا توجد أنشطة منفذة مسجلة في هذه الفترة.</p>`;
+            } else {
+                detailsContainer.innerHTML = actualActivities.map((act, idx) => `
+                    <div class="border border-slate-300 rounded-xl p-4 break-inside-avoid">
+                        <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200 pb-2 mb-3 text-xs">
+                            <span class="font-extrabold text-water-900">${idx + 1}. ${getRegionName(act.regionId)} - ${getDirectorateName(act.dirId)} (${getEngineeringName(act.engId)})</span>
+                            <span class="font-bold text-slate-600">التاريخ: ${act.date} | التصنيف: ${act.category || 'عام'}</span>
+                        </div>
+                        <p class="text-xs text-slate-800 leading-relaxed mb-3">${act.description}</p>
+                        ${act.beneficiaries !== null ? `<p class="text-[11px] font-bold text-emerald-800 mb-3">عدد المستفيدين الموثق: ${act.beneficiaries}</p>` : ''}
+                        ${(act.images && act.images.length > 0) ? `
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-2">
+                                ${act.images.map(img => `
+                                    <div class="border border-slate-200 rounded-lg overflow-hidden aspect-video">
+                                        <img src="${img.url}" class="w-full h-full object-cover" alt="توثيق النشاط">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            }
+        }
+
+        function exportReportToExcel() {
+            const month = document.getElementById('report-month').value;
+            const regFilter = document.getElementById('report-region').value;
+
+            const filtered = appState.activities.filter(a => {
+                if (month && !a.date.startsWith(month)) return false;
+                if (regFilter && a.regionId !== regFilter) return false;
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                showToast('لا توجد بيانات لتصديرها في الفترة المحددة', 'warning');
+                return;
+            }
+
+            const rows = filtered.map(a => ({
+                'التاريخ': a.date,
+                'الإقليم': getRegionName(a.regionId),
+                'الإدارة': getDirectorateName(a.dirId),
+                'الهندسة': getEngineeringName(a.engId),
+                'موقف الإرسال': a.status === 'sent_with_activity' ? 'تم إرسال نشاط' : 'لا يوجد أنشطة',
+                'التصنيف': a.category || '',
+                'وصف النشاط': a.description,
+                'عدد المستفيدين': a.beneficiaries !== null ? a.beneficiaries : '',
+                'عدد الصور المرفقة': (a.images || []).length
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "أنشطة إرشاد الصرف");
+            XLSX.writeFile(wb, `تقرير_إرشاد_الصرف_${month || 'شامل'}.xlsx`);
+            showToast('تم تصدير ملف Excel بنجاح', 'success');
+        }
+
+        // ============================================================================
+        // 9. أرشيف الصور الموثق (Photo Gallery)
+        // ============================================================================
+        function renderPhotoGallery() {
+            const reg = document.getElementById('gal-region').value;
+            const dir = document.getElementById('gal-dir').value;
+            const eng = document.getElementById('gal-eng').value;
+            const month = document.getElementById('gal-month').value;
+            const keyword = document.getElementById('gal-keyword').value.toLowerCase().trim();
+
+            const grid = document.getElementById('gallery-grid');
+            const allPhotos = [];
+
+            appState.activities.forEach(act => {
+                if (act.status !== 'sent_with_activity' || !act.images || act.images.length === 0) return;
+                if (reg && act.regionId !== reg) return;
+                if (dir && act.dirId !== dir) return;
+                if (eng && act.engId !== eng) return;
+                if (month && !act.date.startsWith(month)) return;
+                if (keyword && !(act.category || '').toLowerCase().includes(keyword) && !act.description.toLowerCase().includes(keyword)) return;
+
+                act.images.forEach(img => {
+                    allPhotos.push({
+                        url: img.url,
+                        date: act.date,
+                        region: getRegionName(act.regionId),
+                        dir: getDirectorateName(act.dirId),
+                        eng: getEngineeringName(act.engId),
+                        category: act.category || 'نشاط إرشادي',
+                        description: act.description
+                    });
+                });
+            });
+
+            if (allPhotos.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-xs text-slate-400">لا توجد صور موثقة تطابق معايير البحث المحددة.</div>`;
+                return;
+            }
+
+            grid.innerHTML = allPhotos.map(p => `
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs flex flex-col">
+                    <div class="aspect-video bg-slate-100 relative overflow-hidden">
+                        <img src="${p.url}" alt="${p.category}" class="w-full h-full object-cover hover:scale-105 transition duration-300">
+                        <span class="absolute top-2 right-2 bg-slate-900/75 text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">${p.date}</span>
+                    </div>
+                    <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-water-700 bg-water-50 px-2 py-0.5 rounded">${p.category}</span>
+                            <h4 class="text-xs font-bold text-slate-800 mt-1.5">${p.region} - ${p.eng}</h4>
+                            <p class="text-[11px] text-slate-500 mt-1 line-clamp-2">${p.description}</p>
+                        </div>
+                        <div class="text-[10px] text-slate-400 pt-2 border-t border-slate-100">${p.dir}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================================================
+        // 10. تحديث لوحة التحكم والرسم البياني
+        // ============================================================================
+        function updateDashboard() {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const monthStr = todayStr.slice(0, 7);
+
+            // تنبيه تهيئة الهيكل
+            const alertBox = document.getElementById('empty-structure-alert');
+            if (appState.engineerings.length > 0) {
+                alertBox.classList.add('hidden');
+            } else {
+                alertBox.classList.remove('hidden');
+            }
+
+            const actualActs = appState.activities.filter(a => a.status === 'sent_with_activity');
+            const todayActs = actualActs.filter(a => a.date === todayStr);
+            const monthActs = actualActs.filter(a => a.date.startsWith(monthStr));
+            const totalImages = actualActs.reduce((sum, a) => sum + (a.images ? a.images.length : 0), 0);
+
+            // الأقاليم التي أرسلت اليوم (أي حالة إرسال)
+            const todayAllRecords = appState.activities.filter(a => a.date === todayStr);
+            const activeRegionsSet = new Set(todayAllRecords.map(a => a.regionId));
+
+            // الهندسات التي لم ترسل اليوم
+            const reportedEngsSet = new Set(todayAllRecords.map(a => a.engId));
+            const missingUnitsCount = appState.engineerings.filter(e => !reportedEngsSet.has(e.id)).length;
+
+            document.getElementById('stat-total-activities').textContent = actualActs.length;
+            document.getElementById('stat-today-activities').textContent = todayActs.length;
+            document.getElementById('stat-month-activities').textContent = monthActs.length;
+            document.getElementById('stat-active-regions').textContent = activeRegionsSet.size;
+            document.getElementById('stat-missing-units').textContent = missingUnitsCount;
+            document.getElementById('stat-total-units').textContent = appState.engineerings.length;
+            document.getElementById('stat-total-images').textContent = totalImages;
+
+            // أحدث الأنشطة
+            const recentList = document.getElementById('recent-activities-list');
+            if (actualActs.length === 0) {
+                recentList.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">لم يتم تسجيل أي أنشطة فعلية بعد.</p>`;
+            } else {
+                recentList.innerHTML = actualActs.slice(0, 6).map(act => `
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="font-bold text-water-800">${getRegionName(act.regionId)}</span>
+                            <span class="text-slate-400">${act.date}</span>
+                        </div>
+                        <p class="text-xs font-bold text-slate-700">${getEngineeringName(act.engId)}</p>
+                        <p class="text-[11px] text-slate-600 line-clamp-2">${act.description}</p>
+                    </div>
+                `).join('');
+            }
+
+            // الرسم البياني لتوزيع الأقاليم
+            const ctx = document.getElementById('regionsChart').getContext('2d');
+            const countsPerRegion = APPROVED_REGIONS.map(r => actualActs.filter(a => a.regionId === r.id).length);
+
+            if (regionsChartInstance) regionsChartInstance.destroy();
+            regionsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: APPROVED_REGIONS.map(r => r.name.replace('إقليم ', '')),
+                    datasets: [{
+                        label: 'عدد الأنشطة المنفذة',
+                        data: countsPerRegion,
+                        backgroundColor: '#0284c7',
+                        borderRadius: 8,
+                        barThickness: 32
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1, font: { family: 'Cairo' } }
+                        },
+                        x: {
+                            ticks: { font: { family: 'Cairo', weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============================================================================
+        // 11. دوال الربط والمزامنة مع Google Apps Script (Google Sheets & Drive)
+        // ============================================================================
+        function saveGasUrl() {
+            const url = document.getElementById('gas-web-app-url').value.trim();
+            if (!url) {
+                showToast('يرجى إدخال رابط Web App الصحيح', 'warning');
+                return;
+            }
+            appState.gasUrl = url;
+            const badge = document.getElementById('db-status-badge');
+            badge.textContent = 'متصل سحابيًا';
+            badge.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold';
+            showToast('تم حفظ الرابط. جاري مزامنة البيانات...', 'success');
+            syncWithGoogleSheets();
+        }
+
+        async function syncWithGoogleSheets() {
+            if (!appState.gasUrl) {
+                showToast('يرجى إدخال رابط Google Apps Script في قسم "الربط بـ Google Sheets" أولاً.', 'info');
+                return;
+            }
+            const syncBtn = document.getElementById('sync-btn');
+            syncBtn.classList.add('opacity-50');
+            try {
+                const res = await fetch(`${appState.gasUrl}?action=getAll`);
+                const data = await res.json();
+                if (data.status === 'success') {
+                    appState.directorates = data.directorates || [];
+                    appState.engineerings = data.engineerings || [];
+                    appState.activities = data.activities || [];
+                    refreshAllViews();
+                    showToast('تمت مزامنة كافة البيانات من Google Sheets بنجاح', 'success');
+                }
+            } catch (err) {
+                showToast('تعذر الاتصال بـ Google Sheets. تأكد من صحة الرابط وصلاحيات النشر.', 'error');
+            } finally {
+                syncBtn.classList.remove('opacity-50');
+            }
+        }
+
+        async function pushDataToCloud(action, payload) {
+            if (!appState.gasUrl) return;
+            try {
+                await fetch(appState.gasUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, payload })
+                });
+            } catch (err) {
+                showToast('تم الحفظ محليًا، تعذر الإرسال السحابي اللحظي.', 'warning');
+            }
+        }
+
+        // ============================================================================
+        // 12. دوال مساعدة للأسماء والتحديث الشامل
+        // ============================================================================
+        function getRegionName(id) {
+            return APPROVED_REGIONS.find(r => r.id === id)?.name || id;
+        }
+        function getDirectorateName(id) {
+            return appState.directorates.find(d => d.id === id)?.name || 'غير محدد';
+        }
+        function getEngineeringName(id) {
+            return appState.engineerings.find(e => e.id === id)?.name || 'غير محدد';
+        }
+
+        function refreshAllViews() {
+            updateDashboard();
+            renderActivitiesTable();
+            renderTrackingView();
+            renderStructureTree();
+            generateMonthlyReport();
+            renderPhotoGallery();
+        }
+    </script>
+</body>
+</html>
