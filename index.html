@@ -782,7 +782,11 @@
                             <button onclick="saveGasUrl()" class="px-5 py-2.5 bg-water-700 hover:bg-water-800 text-white text-xs font-bold rounded-xl transition shrink-0">
                                 حفظ وتفعيل الربط
                             </button>
+                            <button onclick="testGasConnection()" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition shrink-0">
+                                اختبار الرابط
+                            </button>
                         </div>
+                        <div id="gas-diagnostic-box" class="hidden p-4 rounded-xl text-xs leading-relaxed"></div>
                     </div>
                 </section>
 
@@ -794,6 +798,9 @@
         // ============================================================================
         // 1. الثوابت والبيانات الأساسية المعتمدة
         // ============================================================================
+        // تم تثبيت رابط Web App الخاص بـ Google Apps Script ليعمل تلقائيًا على جميع الأجهزة
+        const DEFAULT_GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbylQADMy3J5jLDoaryj2d9EPlsH6I5lmJqag3EBpBG7bNOduRD5ua-kmrveoDwhsthG7A/exec";
+
         const APPROVED_REGIONS = [
             { id: 'REG_1', name: 'إقليم شرق الدلتا' },
             { id: 'REG_2', name: 'إقليم القناة وسيناء' },
@@ -865,19 +872,29 @@
             lucide.createIcons();
             await initDefaultAdmin();
 
+            // استرجاع رابط الربط المثبت في الكود أو المحفوظ سابقًا في المتصفح
+            const savedGasUrl = DEFAULT_GAS_WEB_APP_URL || localStorage.getItem('irshad_gas_url');
+            if (savedGasUrl) {
+                appState.gasUrl = savedGasUrl;
+                const loginInput = document.getElementById('login-gas-url');
+                const settingsInput = document.getElementById('gas-web-app-url');
+                if (loginInput) loginInput.value = savedGasUrl;
+                if (settingsInput) settingsInput.value = savedGasUrl;
+                syncWithGoogleSheets(true);
+            }
+
             const todayStr = new Date().toISOString().split('T')[0];
-            const monthStr = todayStr.slice(0, 7);
-            document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('ar-EG', {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            });
-            document.getElementById('act-date').value = todayStr;
-            document.getElementById('tracking-date').value = todayStr;
-            document.getElementById('report-date').value = todayStr;
-            document.getElementById('report-month').value = monthStr;
+            const dateDisp = document.getElementById('current-date-display');
+            if (dateDisp) dateDisp.textContent = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            
+            if (document.getElementById('act-date')) document.getElementById('act-date').value = todayStr;
+            if (document.getElementById('tracking-date')) document.getElementById('tracking-date').value = todayStr;
+            if (document.getElementById('report-date')) document.getElementById('report-date').value = todayStr;
+            if (document.getElementById('report-month')) document.getElementById('report-month').value = todayStr.slice(0, 7);
         });
 
         // ============================================================================
-        // 2. نظام تسجيل الدخول والصلاحيات (Authentication & RBAC)
+        // 2. إدارة المصادقة، الجلسات، والصلاحيات (RBAC)
         // ============================================================================
         function toggleForgotPasswordInfo() {
             document.getElementById('forgot-password-box').classList.toggle('hidden');
@@ -887,92 +904,100 @@
             e.preventDefault();
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
-            const gasInput = document.getElementById('login-gas-url').value.trim();
+            const gasUrlInput = document.getElementById('login-gas-url').value.trim();
 
-            if (gasInput) {
-                appState.gasUrl = gasInput;
-                document.getElementById('gas-web-app-url').value = gasInput;
+            if (gasUrlInput) {
+                appState.gasUrl = gasUrlInput;
+                localStorage.setItem('irshad_gas_url', gasUrlInput);
+                const settingsInput = document.getElementById('gas-web-app-url');
+                if (settingsInput) settingsInput.value = gasUrlInput;
                 await syncWithGoogleSheets(true);
             }
 
             const inputHash = await hashPassword(password);
-            const foundUser = appState.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.passwordHash === inputHash);
+            const user = appState.users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.passwordHash === inputHash);
 
-            if (!foundUser) {
+            if (!user) {
                 showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
                 return;
             }
-            if (foundUser.isActive === false || foundUser.isActive === 'false') {
+            if (user.isActive === false || user.isActive === 'false') {
                 showToast('هذا الحساب موقوف حاليًا. يرجى مراجعة الإدارة العامة.', 'error');
                 return;
             }
 
-            appState.currentUser = foundUser;
-            foundUser.lastActivity = new Date().toLocaleString('ar-EG');
-            await logAudit('تسجيل دخول', foundUser.id, `دخول المستخدم (${foundUser.fullName}) بصلاحية: ${ROLE_LABELS[foundUser.role]}`);
+            user.lastActivity = new Date().toLocaleString('ar-EG');
+            appState.currentUser = user;
+            pushDataToCloud('saveUser', user);
 
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app-shell').classList.remove('hidden');
 
-            setupRoleBasedUI();
-            showToast(`مرحبًا بك، ${foundUser.fullName}`, 'success');
+            setupWorkspaceForUser();
+            await logAudit('تسجيل دخول', user.id, `دخول المستخدم (${user.fullName}) بصلاحية (${ROLE_LABELS[user.role]})`);
+            showToast(`مرحبًا بك، ${user.fullName}`, 'success');
         }
 
         function logoutUser() {
             appState.currentUser = null;
+            document.getElementById('login-password').value = '';
             document.getElementById('app-shell').classList.add('hidden');
             document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('login-password').value = '';
+            showToast('تم تسجيل الخروج بنجاح', 'info');
         }
 
-        function setupRoleBasedUI() {
+        function setupWorkspaceForUser() {
             const user = appState.currentUser;
-            document.getElementById('sidebar-role-badge').textContent = ROLE_LABELS[user.role];
             document.getElementById('sidebar-user-name').textContent = user.fullName;
+            document.getElementById('sidebar-role-badge').textContent = ROLE_LABELS[user.role];
 
-            let scopeText = 'جميع الأقاليم الستة';
+            let scopeText = 'نطاق الإشراف: الأقاليم الستة';
             if (user.role === 'region_admin') scopeText = getRegionName(user.regionId);
             if (user.role === 'directorate_admin') scopeText = `${getRegionName(user.regionId)} - ${getDirectorateName(user.dirId)}`;
             document.getElementById('sidebar-user-scope').textContent = scopeText;
 
-            // بناء القائمة الجانبية حسب الصلاحيات
-            const navItems = [
-                { id: 'dashboard', label: 'لوحة التحكم الرئيسية', icon: 'layout-dashboard', roles: ['directorate_admin', 'region_admin', 'general_admin'] },
-                { id: 'register', label: 'تسجيل نشاط جديد', icon: 'file-plus-2', roles: ['directorate_admin'] },
-                { id: 'activities-log', label: 'سجل الأنشطة', icon: 'list-checks', roles: ['directorate_admin', 'region_admin', 'general_admin'] },
-                { id: 'review', label: 'مراجعة واعتماد الأنشطة', icon: 'shield-check', roles: ['region_admin', 'general_admin'] },
-                { id: 'tracking', label: 'متابعة الإرسال اليومي', icon: 'calendar-check-2', roles: ['region_admin', 'general_admin'] },
-                { id: 'reports', label: 'التقارير والإحصائيات', icon: 'file-bar-chart-2', roles: ['directorate_admin', 'region_admin', 'general_admin'] },
-                { id: 'gallery', label: 'أرشيف الصور المركزي', icon: 'images', roles: ['directorate_admin', 'region_admin', 'general_admin'] },
-                { id: 'users', label: 'إدارة المستخدمين', icon: 'users', roles: ['general_admin'] },
-                { id: 'structure', label: 'إدارة الهيكل والتصنيفات', icon: 'network', roles: ['general_admin'] },
-                { id: 'audit', label: 'سجل التدقيق والعمليات', icon: 'history', roles: ['general_admin'] },
-                { id: 'connection', label: 'الربط السحابي (Sheets)', icon: 'database', roles: ['general_admin'] }
-            ];
+            const navItems = [];
+            navItems.push({ id: 'dashboard', label: 'لوحة التحكم الرئيسية', icon: 'layout-dashboard' });
+
+            if (user.role === 'directorate_admin') {
+                navItems.push({ id: 'register', label: 'تسجيل نشاط جديد', icon: 'plus-circle' });
+                navItems.push({ id: 'activities-log', label: 'سجل أنشطة الإدارة', icon: 'list-checks' });
+                navItems.push({ id: 'reports', label: 'تقارير الإدارة', icon: 'file-text' });
+                navItems.push({ id: 'gallery', label: 'أرشيف الصور', icon: 'images' });
+            } else if (user.role === 'region_admin') {
+                navItems.push({ id: 'review', label: 'مراجعة واعتماد الأنشطة', icon: 'check-square' });
+                navItems.push({ id: 'tracking', label: 'متابعة الإرسال اليومي', icon: 'calendar-check' });
+                navItems.push({ id: 'activities-log', label: 'سجل أنشطة الإقليم', icon: 'list' });
+                navItems.push({ id: 'reports', label: 'تقارير الإقليم', icon: 'file-bar-chart' });
+                navItems.push({ id: 'gallery', label: 'أرشيف صور الإقليم', icon: 'images' });
+            } else if (user.role === 'general_admin') {
+                navItems.push({ id: 'tracking', label: 'متابعة الإرسال اليومي', icon: 'calendar-check' });
+                navItems.push({ id: 'activities-log', label: 'سجل الأنشطة المركزي', icon: 'layers' });
+                navItems.push({ id: 'review', label: 'متابعة المراجعات', icon: 'eye' });
+                navItems.push({ id: 'reports', label: 'التقارير والإحصائيات', icon: 'file-bar-chart' });
+                navItems.push({ id: 'gallery', label: 'أرشيف الصور المركزي', icon: 'images' });
+                navItems.push({ id: 'users', label: 'إدارة المستخدمين', icon: 'users' });
+                navItems.push({ id: 'structure', label: 'الهيكل الإداري والتصنيفات', icon: 'network' });
+                navItems.push({ id: 'audit', label: 'سجل التدقيق والعمليات', icon: 'shield-alert' });
+                navItems.push({ id: 'connection', label: 'الربط بـ Google Sheets', icon: 'database' });
+            }
 
             const navContainer = document.getElementById('sidebar-nav-links');
-            navContainer.innerHTML = navItems
-                .filter(item => item.roles.includes(user.role))
-                .map(item => `
-                    <button onclick="switchTab('${item.id}')" data-tab="${item.id}" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-water-100 hover:bg-water-800 transition">
-                        <i data-lucide="${item.icon}" class="w-5 h-5"></i>
-                        <span>${item.label}</span>
-                    </button>
-                `).join('');
+            navContainer.innerHTML = navItems.map(item => `
+                <button onclick="switchTab('${item.id}')" id="nav-btn-${item.id}" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-water-200 hover:bg-water-900 hover:text-white transition">
+                    <i data-lucide="${item.icon}" class="w-4 h-4 shrink-0"></i>
+                    <span>${item.label}</span>
+                </button>
+            `).join('');
 
             populateAllDropdownsForUser();
+            prepareRegisterFormForUser();
             switchTab('dashboard');
             lucide.createIcons();
         }
 
-        // تصفية البيانات المسموح للمستخدم رؤيتها حسب نطاقه الإداري (Data Isolation)
-        function getScopedActivities() {
-            const user = appState.currentUser;
-            if (!user) return [];
-            if (user.role === 'general_admin') return appState.activities;
-            if (user.role === 'region_admin') return appState.activities.filter(a => a.regionId === user.regionId);
-            if (user.role === 'directorate_admin') return appState.activities.filter(a => a.dirId === user.dirId);
-            return [];
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('translate-x-full');
         }
 
         function switchTab(tabId) {
@@ -981,16 +1006,18 @@
             if (target) target.classList.remove('hidden');
 
             document.querySelectorAll('.nav-btn').forEach(btn => {
-                if (btn.dataset.tab === tabId) {
-                    btn.classList.remove('text-water-100', 'hover:bg-water-800');
-                    btn.classList.add('bg-water-700', 'text-white');
-                } else {
-                    btn.classList.add('text-water-100', 'hover:bg-water-800');
-                    btn.classList.remove('bg-water-700', 'text-white');
-                }
+                btn.classList.remove('bg-water-700', 'text-white', 'shadow-sm');
+                btn.classList.add('text-water-200');
             });
+            const activeBtn = document.getElementById(`nav-btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-water-700', 'text-white', 'shadow-sm');
+                activeBtn.classList.remove('text-water-200');
+            }
 
-            if (window.innerWidth < 1024) document.getElementById('sidebar').classList.add('translate-x-full');
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('translate-x-full');
+            }
 
             if (tabId === 'dashboard') renderRoleDashboard();
             if (tabId === 'register') prepareRegisterFormForUser();
@@ -999,22 +1026,29 @@
             if (tabId === 'tracking') renderTrackingView();
             if (tabId === 'reports') generateOfficialReport();
             if (tabId === 'gallery') renderPhotoGallery();
-            if (tabId === 'users') renderUsersTable();
+            if (tabId === 'users') { toggleUserScopeFields(); renderUsersTable(); }
             if (tabId === 'structure') renderStructureManagement();
             if (tabId === 'audit') renderAuditLogTable();
+
             lucide.createIcons();
         }
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('translate-x-full');
+        function getScopedActivities() {
+            const user = appState.currentUser;
+            if (!user) return [];
+            if (user.role === 'directorate_admin') return appState.activities.filter(a => a.dirId === user.dirId);
+            if (user.role === 'region_admin') return appState.activities.filter(a => a.regionId === user.regionId);
+            return appState.activities;
         }
 
         // ============================================================================
-        // 3. لوحات التحكم الثلاث (تتكيف حسب مستوى المستخدم + التنقل الهرمي للإدارة العامة)
+        // 3. لوحات التحكم المخصصة للمستويات الثلاثة (البند 5)
         // ============================================================================
         function renderRoleDashboard() {
             const user = appState.currentUser;
             const container = document.getElementById('dashboard-dynamic-content');
+            if (!user || !container) return;
+
             const scopedActs = getScopedActivities();
             const todayStr = new Date().toISOString().split('T')[0];
             const monthStr = todayStr.slice(0, 7);
@@ -2311,9 +2345,51 @@
 
         function saveGasUrl() {
             const url = document.getElementById('gas-web-app-url').value.trim();
-            if (!url) return;
+            if (!url) {
+                showToast('يرجى إدخال رابط Web App أولاً', 'warning');
+                return;
+            }
+            if (!url.includes('script.google.com/macros/s/') || !url.endsWith('/exec')) {
+                showToast('تأكد من نسخ الرابط الصحيح الذي يبدأ بـ script.google.com وينتهي بـ /exec', 'warning');
+            }
             appState.gasUrl = url;
-            syncWithGoogleSheets();
+            localStorage.setItem('irshad_gas_url', url);
+            syncWithGoogleSheets(false);
+        }
+
+        async function testGasConnection() {
+            const url = document.getElementById('gas-web-app-url').value.trim();
+            const diagBox = document.getElementById('gas-diagnostic-box');
+            diagBox.classList.remove('hidden');
+            if (!url) {
+                diagBox.className = 'p-4 rounded-xl text-xs bg-amber-50 text-amber-800 border border-amber-200';
+                diagBox.textContent = 'يرجى لصق الرابط أولاً في الخانة أعلاه.';
+                return;
+            }
+            diagBox.className = 'p-4 rounded-xl text-xs bg-sky-50 text-sky-800 border border-sky-200';
+            diagBox.textContent = 'جاري فحص الرابط والاتصال بخادم Google...';
+            try {
+                const res = await fetch(`${url}?action=getAll`, { method: 'GET', redirect: 'follow' });
+                const text = await res.text();
+                const data = JSON.parse(text);
+                if (data.status === 'success') {
+                    diagBox.className = 'p-4 rounded-xl text-xs bg-emerald-50 text-emerald-800 border border-emerald-200';
+                    diagBox.innerHTML = '<strong>نجح الاتصال!</strong> الخادم يستجيب بشكل سليم. اضغط على "حفظ وتفعيل الربط".';
+                } else {
+                    diagBox.className = 'p-4 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200';
+                    diagBox.innerHTML = `<strong>استجاب الخادم بخطأ:</strong> ${data.message}`;
+                }
+            } catch (e) {
+                diagBox.className = 'p-4 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 space-y-1';
+                diagBox.innerHTML = `
+                    <strong>فشل الاتصال بالرابط. الأسباب المحتملة:</strong>
+                    <ul class="list-disc pr-5 mt-1 space-y-1">
+                        <li>في صفحة Apps Script، خيار <strong>من لديه حق الوصول (Who has access)</strong> لم يُضبط على <strong>أي شخص (Anyone)</strong>.</li>
+                        <li>تم نسخ رابط الاختبار (<code>/dev</code>) بدلًا من رابط النشر الفعلي (<code>/exec</code>).</li>
+                        <li>تأكدي من حفظ الكود في Apps Script وعمل <strong>نشر جديد (New deployment)</strong> أو اختيار <strong>إصدار جديد (New version)</strong>.</li>
+                    </ul>
+                `;
+            }
         }
 
         async function syncWithGoogleSheets(silent = false) {
@@ -2322,6 +2398,7 @@
                 const res = await fetch(`${appState.gasUrl}?action=getAll`, { method: 'GET', redirect: 'follow' });
                 const data = JSON.parse(await res.text());
                 if (data.status === 'success') {
+                    localStorage.setItem('irshad_gas_url', appState.gasUrl);
                     if (data.users && data.users.length > 0) appState.users = data.users;
                     appState.directorates = data.directorates || [];
                     appState.engineerings = data.engineerings || [];
