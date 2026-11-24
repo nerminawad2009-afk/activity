@@ -931,7 +931,64 @@
 
         // ============================================================================
         // 3. ميزة الباركود الذكي للموقع (QR Code)
-// ... existing code ... -->
+        // ============================================================================
+        function openQrModal() {
+            const url = window.location.href;
+            document.getElementById('site-share-url').value = url;
+            const container = document.getElementById('qrcode-canvas-container');
+            container.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                new QRCode(container, {
+                    text: url,
+                    width: 180,
+                    height: 180,
+                    colorDark: "#075985",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            } else {
+                container.innerHTML = '<p class="text-xs text-slate-500 p-4">يرجى نسخ الرابط أدناه للمشاركة</p>';
+            }
+            const modal = document.getElementById('qr-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeQrModal() {
+            const modal = document.getElementById('qr-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function copySiteUrl() {
+            const input = document.getElementById('site-share-url');
+            input.select();
+            document.execCommand('copy');
+            showToast('تم نسخ رابط المنظومة بنجاح', 'success');
+        }
+
+        function downloadQrCodeImage() {
+            const canvas = document.querySelector('#qrcode-canvas-container canvas');
+            const img = document.querySelector('#qrcode-canvas-container img');
+            const dataUrl = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
+            if (!dataUrl) {
+                showToast('تعذر تحميل صورة الباركود', 'error');
+                return;
+            }
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'QR_منظومة_إرشاد_الصرف.png';
+            link.click();
+            showToast('تم تحميل صورة الباركود بنجاح', 'success');
+        }
+
+        // ============================================================================
+        // 4. تسجيل الدخول والخروج والتنقل بين التبويبات
+        // ============================================================================
+        function toggleForgotPasswordInfo() {
+            document.getElementById('forgot-password-box').classList.toggle('hidden');
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
             const username = document.getElementById('login-username').value.trim();
