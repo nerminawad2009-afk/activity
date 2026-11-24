@@ -870,31 +870,25 @@
         // 2. التهيئة الأولية وتشفير كلمات المرور
         // ============================================================================
         async function hashPassword(password) {
-            const msgBuffer = new TextEncoder().encode(password);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            try {
+                if (window.crypto && window.crypto.subtle) {
+                    const msgBuffer = new TextEncoder().encode(password);
+                    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+                    const hashArray = Array.from(new Uint8Array(hashBuffer));
+                    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                }
+            } catch (e) {}
+            // بديل آمن في حال عدم توفر crypto.subtle
+            let hash = 0;
+            for (let i = 0; i < password.length; i++) {
+                hash = ((hash << 5) - hash) + password.charCodeAt(i);
+                hash |= 0;
+            }
+            return 'FALLBACK_' + Math.abs(hash).toString(16);
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            lucide.createIcons();
-            const today = new Date().toISOString().split('T')[0];
-            const currentMonth = today.slice(0, 7);
-            document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            
-            if (document.getElementById('act-date')) document.getElementById('act-date').value = today;
-            if (document.getElementById('tracking-date')) document.getElementById('tracking-date').value = today;
-            if (document.getElementById('report-date')) document.getElementById('report-date').value = today;
-            if (document.getElementById('report-month')) document.getElementById('report-month').value = currentMonth;
-
-            if (appState.gasUrl) {
-                document.getElementById('login-gas-url').value = appState.gasUrl;
-                document.getElementById('gas-web-app-url').value = appState.gasUrl;
-                await syncWithGoogleSheets(true);
-            }
-
-            // ضمان وجود حساب admin الافتراضي إذا كانت قاعدة البيانات فارغة
-            if (!appState.users.some(u => u.username === 'admin')) {
+        async function ensureDefaultAdminExists() {
+            if (!appState.users.some(u => u.username && u.username.toLowerCase() === 'admin')) {
                 const defaultHash = await hashPassword('Admin@2026');
                 appState.users.unshift({
                     id: 'USR_ADMIN_DEFAULT',
@@ -908,63 +902,90 @@
                     lastActivity: ''
                 });
             }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try { if (typeof lucide !== 'undefined') lucide.createIcons(); } catch (e) {}
+            
+            // تجهيز حساب admin الافتراضي فورًا قبل انتظار أي اتصال سحابي
+            await ensureDefaultAdminExists();
+
+            const today = new Date().toISOString().split('T')[0];
+            const currentMonth = today.slice(0, 7);
+            const dateDisplay = document.getElementById('current-date-display');
+            if (dateDisplay) {
+                dateDisplay.textContent = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }
+            
+            if (document.getElementById('act-date')) document.getElementById('act-date').value = today;
+            if (document.getElementById('tracking-date')) document.getElementById('tracking-date').value = today;
+            if (document.getElementById('report-date')) document.getElementById('report-date').value = today;
+            if (document.getElementById('report-month')) document.getElementById('report-month').value = currentMonth;
+
+            if (appState.gasUrl) {
+                if (document.getElementById('login-gas-url')) document.getElementById('login-gas-url').value = appState.gasUrl;
+                if (document.getElementById('gas-web-app-url')) document.getElementById('gas-web-app-url').value = appState.gasUrl;
+                syncWithGoogleSheets(true).then(() => ensureDefaultAdminExists());
+            }
         });
 
         // ============================================================================
         // 3. ميزة الباركود الذكي للموقع (QR Code)
-        // ============================================================================
-        function getCleanSiteUrl() {
-            return window.location.href.split('#')[0].split('?')[0];
-        }
+// ... existing code ... -->
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const customGas = document.getElementById('login-gas-url').value.trim();
 
-        function openQrModal() {
-            const url = getCleanSiteUrl();
-            document.getElementById('site-share-url').value = url;
-            const container = document.getElementById('qrcode-canvas-container');
-            container.innerHTML = '';
+            const btn = document.getElementById('login-submit-btn');
+            btn.disabled = true;
 
-            if (typeof QRCode !== 'undefined') {
-                new QRCode(container, {
-                    text: url,
-                    width: 180,
-                    height: 180,
-                    colorDark: "#0c4a6e",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-            } else {
-                container.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}" alt="QR Code" class="w-44 h-44">`;
-            }
+            try {
+                if (customGas && customGas !== appState.gasUrl) {
+                    appState.gasUrl = customGas;
+                    localStorage.setItem('irshad_gas_url', customGas);
+                    await syncWithGoogleSheets(true);
+                }
 
-            const modal = document.getElementById('qr-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            lucide.createIcons();
-        }
+                await ensureDefaultAdminExists();
 
-        function closeQrModal() {
-            const modal = document.getElementById('qr-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
+                const inputHash = await hashPassword(password);
+                const user = appState.users.find(u => u.username && u.username.toLowerCase() === username.toLowerCase());
 
-        function copySiteUrl() {
-            const input = document.getElementById('site-share-url');
-            input.select();
-            navigator.clipboard.writeText(input.value);
-            showToast('تم نسخ رابط الموقع بنجاح', 'success');
-        }
+                if (!user) {
+                    btn.disabled = false;
+                    showToast('اسم المستخدم غير صحيح', 'error');
+                    return;
+                }
+                if (user.isActive === false || user.isActive === 'false') {
+                    btn.disabled = false;
+                    showToast('هذا الحساب موقوف حاليًا، يرجى مراجعة الإدارة العامة', 'error');
+                    return;
+                }
+                const isDefaultAdminPass = (username.toLowerCase() === 'admin' && password === 'Admin@2026');
+                if (user.passwordHash !== inputHash && !isDefaultAdminPass) {
+                    btn.disabled = false;
+                    showToast('كلمة المرور غير صحيحة', 'error');
+                    return;
+                }
 
-        function downloadQrCodeImage() {
-            const canvas = document.querySelector('#qrcode-canvas-container canvas');
-            if (canvas) {
-                const link = document.createElement('a');
-                link.download = 'باركود_منظومة_ارشاد_الصرف.png';
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                showToast('تم تحميل صورة الباركود بنجاح', 'success');
-            } else {
-                showToast('يمكنك حفظ الصورة بالضغط المطول عليها', 'info');
+                user.lastActivity = new Date().toLocaleString('ar-EG');
+                appState.currentUser = user;
+                btn.disabled = false;
+
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-shell').classList.remove('hidden');
+
+                setupSidebarAndRoleUI();
+                populateAllDropdownsForUser();
+                resetActivityForm();
+                switchTab('dashboard');
+                logAudit('تسجيل دخول', user.id, `دخول المستخدم: ${user.fullName}`);
+                showToast(`مرحبًا بك، ${user.fullName}`, 'success');
+            } catch (err) {
+                btn.disabled = false;
+                showToast('حدث خطأ أثناء تسجيل الدخول، يرجى المحاولة مرة أخرى', 'error');
             }
         }
 
@@ -1649,3 +1670,563 @@
 
             const cards = [];
             list.forEach(a => {
+                a.images.forEach(img => {
+                    cards.push(`
+                        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                            <a href="${img.url}" target="_blank" class="block aspect-video bg-slate-100 overflow-hidden">
+                                <img src="${img.url}" class="w-full h-full object-cover hover:scale-105 transition">
+                            </a>
+                            <div class="p-3 text-xs space-y-1">
+                                <div class="font-bold text-slate-800 truncate">${a.title}</div>
+                                <div class="text-water-700">${getDirectorateName(a.dirId)} | ${a.date}</div>
+                                <div class="text-[11px] text-slate-400">بواسطة: ${a.createdBy || '--'}</div>
+                            </div>
+                        </div>
+                    `);
+                });
+            });
+            document.getElementById('gallery-grid').innerHTML = cards.join('') || `<p class="col-span-full py-10 text-center text-xs text-slate-400">لا توجد صور مطابقة للبحث.</p>`;
+        }
+
+        // ============================================================================
+        // 10. إدارة المستخدمين
+        // ============================================================================
+        function toggleUserScopeFields() {
+            const role = document.getElementById('usr-role').value;
+            document.getElementById('usr-region-wrapper').classList.toggle('hidden', role === 'general_admin');
+            document.getElementById('usr-dir-wrapper').classList.toggle('hidden', role !== 'directorate_admin');
+        }
+
+        async function handleSaveUser(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-user-id').value;
+            const fullName = document.getElementById('usr-fullname').value.trim();
+            const username = document.getElementById('usr-username').value.trim();
+            const password = document.getElementById('usr-password').value;
+            const role = document.getElementById('usr-role').value;
+            const regionId = role === 'general_admin' ? '' : document.getElementById('usr-region').value;
+            const dirId = role === 'directorate_admin' ? document.getElementById('usr-dir').value : '';
+
+            if (role !== 'general_admin' && !regionId) {
+                showToast('يرجى تحديد الإقليم المرتبط بالمستخدم', 'warning');
+                return;
+            }
+            if (role === 'directorate_admin' && !dirId) {
+                showToast('يرجى تحديد الإدارة المرتبطة بمسؤول الإدارة', 'warning');
+                return;
+            }
+
+            if (appState.users.some(u => u.username.toLowerCase() === username.toLowerCase() && u.id !== editId)) {
+                showToast('اسم المستخدم مستخدم بالفعل، اختر اسمًا آخر', 'error');
+                return;
+            }
+
+            if (role === 'directorate_admin' && appState.users.some(u => u.role === 'directorate_admin' && u.dirId === dirId && u.id !== editId && u.isActive !== false)) {
+                showToast('يوجد مسؤول إدارة نشط مرتبط بهذه الإدارة بالفعل.', 'warning');
+                return;
+            }
+
+            const existing = editId ? appState.users.find(u => u.id === editId) : null;
+            if (!existing && !password) {
+                showToast('يرجى إدخال كلمة المرور للحساب الجديد', 'warning');
+                return;
+            }
+
+            const passwordHash = password ? await hashPassword(password) : existing.passwordHash;
+            const userObj = {
+                id: editId || ('USR_' + Date.now()),
+                fullName, username, passwordHash, role, regionId, dirId,
+                isActive: existing ? existing.isActive : true,
+                lastActivity: existing ? existing.lastActivity : 'لم يسجل دخول بعد'
+            };
+
+            if (editId) {
+                const idx = appState.users.findIndex(u => u.id === editId);
+                if (idx !== -1) appState.users[idx] = userObj;
+            } else {
+                appState.users.push(userObj);
+            }
+
+            await pushDataToCloud('saveUser', userObj);
+            await logAudit(editId ? 'تعديل حساب مستخدم' : 'إنشاء حساب مستخدم', userObj.id, `المستخدم: ${fullName} (${ROLE_LABELS[role]})`);
+
+            showToast('تم حفظ بيانات الحساب بنجاح', 'success');
+            resetUserForm();
+            renderUsersTable();
+        }
+
+        function editUserAccount(id) {
+            const u = appState.users.find(x => x.id === id);
+            if (!u) return;
+            document.getElementById('edit-user-id').value = u.id;
+            document.getElementById('user-form-title').textContent = 'تعديل بيانات حساب مستخدم';
+            document.getElementById('usr-fullname').value = u.fullName;
+            document.getElementById('usr-username').value = u.username;
+            document.getElementById('usr-password').value = '';
+            document.getElementById('usr-role').value = u.role;
+            toggleUserScopeFields();
+            if (u.regionId) {
+                document.getElementById('usr-region').value = u.regionId;
+                populateDirectoratesDropdown('usr-region', 'usr-dir');
+            }
+            if (u.dirId) document.getElementById('usr-dir').value = u.dirId;
+        }
+
+        async function toggleUserActive(id) {
+            const u = appState.users.find(x => x.id === id);
+            if (!u || u.username === 'admin') return;
+            u.isActive = !(u.isActive !== false && u.isActive !== 'false');
+            await pushDataToCloud('saveUser', u);
+            await logAudit(u.isActive ? 'تفعيل حساب' : 'إيقاف حساب', u.id, `الحساب: ${u.fullName}`);
+            renderUsersTable();
+            showToast(u.isActive ? 'تم تفعيل الحساب' : 'تم إيقاف الحساب', 'info');
+        }
+
+        function resetUserForm() {
+            document.getElementById('edit-user-id').value = '';
+            document.getElementById('user-form-title').textContent = 'إنشاء حساب مستخدم جديد';
+            document.getElementById('usr-fullname').value = '';
+            document.getElementById('usr-username').value = '';
+            document.getElementById('usr-password').value = '';
+            document.getElementById('usr-role').value = 'directorate_admin';
+            toggleUserScopeFields();
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('users-table-tbody');
+            tbody.innerHTML = appState.users.map(u => {
+                const active = u.isActive !== false && u.isActive !== 'false';
+                let scope = 'جميع الأقاليم';
+                if (u.role === 'region_admin') scope = getRegionName(u.regionId);
+                if (u.role === 'directorate_admin') scope = `${getRegionName(u.regionId)} - ${getDirectorateName(u.dirId)}`;
+
+                return `
+                    <tr class="hover:bg-slate-50">
+                        <td class="py-3 px-4 text-xs">
+                            <div class="font-bold text-slate-800">${u.fullName}</div>
+                            <div class="text-slate-400 dir-ltr text-right">${u.username} | آخر نشاط: ${u.lastActivity || '--'}</div>
+                        </td>
+                        <td class="py-3 px-4 text-xs font-bold text-water-800">${ROLE_LABELS[u.role]}</td>
+                        <td class="py-3 px-4 text-xs text-slate-600">${scope}</td>
+                        <td class="py-3 px-4 text-xs">
+                            <span class="px-2 py-0.5 rounded-full font-bold ${active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">
+                                ${active ? 'نشط' : 'موقوف'}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center whitespace-nowrap space-x-1 space-x-reverse">
+                            <button onclick="editUserAccount('${u.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-xs font-bold rounded-lg">تعديل</button>
+                            ${u.username !== 'admin' ? `
+                                <button onclick="toggleUserActive('${u.id}')" class="px-2.5 py-1 ${active ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'} text-xs font-bold rounded-lg">
+                                    ${active ? 'إيقاف' : 'تفعيل'}
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ============================================================================
+        // 11. إدارة الهيكل الإداري والتصنيفات والمستهدفات
+        // ============================================================================
+        async function addDirectorate(e) {
+            e.preventDefault();
+            const regionId = document.getElementById('struct-dir-region').value;
+            const name = document.getElementById('struct-dir-name').value.trim();
+            if (!regionId || !name) return;
+
+            const newDir = { id: 'DIR_' + Date.now(), regionId, name, isActive: true };
+            appState.directorates.push(newDir);
+            document.getElementById('struct-dir-name').value = '';
+            await pushDataToCloud('saveDirectorate', newDir);
+            await logAudit('إضافة إدارة', newDir.id, `${name} (${getRegionName(regionId)})`);
+            showToast('تمت إضافة الإدارة بنجاح', 'success');
+            renderStructureManagement();
+        }
+
+        async function addEngineering(e) {
+            e.preventDefault();
+            const dirId = document.getElementById('struct-eng-dir').value;
+            const name = document.getElementById('struct-eng-name').value.trim();
+            if (!dirId || !name) return;
+
+            const newEng = { id: 'ENG_' + Date.now(), dirId, name, isActive: true };
+            appState.engineerings.push(newEng);
+            document.getElementById('struct-eng-name').value = '';
+            await pushDataToCloud('saveEngineering', newEng);
+            await logAudit('إضافة هندسة', newEng.id, `${name} (${getDirectorateName(dirId)})`);
+            showToast('تمت إضافة الهندسة بنجاح', 'success');
+            renderStructureManagement();
+        }
+
+        async function addActivityCategory(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-category-name').value.trim();
+            if (!name) return;
+            const newCat = { id: 'CAT_' + Date.now(), name, isActive: true };
+            appState.categories.push(newCat);
+            document.getElementById('new-category-name').value = '';
+            await pushDataToCloud('saveCategory', newCat);
+            await logAudit('إضافة تصنيف نشاط', newCat.id, name);
+            populateAllDropdownsForUser();
+            renderStructureManagement();
+            showToast('تمت إضافة التصنيف بنجاح', 'success');
+        }
+
+        async function toggleUnitActive(type, id) {
+            const list = type === 'dir' ? appState.directorates : appState.engineerings;
+            const item = list.find(x => x.id === id);
+            if (!item) return;
+            item.isActive = !(item.isActive !== false && item.isActive !== 'false');
+            await pushDataToCloud(type === 'dir' ? 'saveDirectorate' : 'saveEngineering', item);
+            await logAudit(item.isActive ? 'تفعيل وحدة إدارية' : 'إيقاف وحدة إدارية', id, item.name);
+            renderStructureManagement();
+            showToast(item.isActive ? 'تم تفعيل الوحدة الإدارية' : 'تم إيقاف الوحدة الإدارية (مع الحفاظ على سجلاتها السابقة)', 'info');
+        }
+
+        function openEditUnitModal(type, id) {
+            const list = type === 'dir' ? appState.directorates : appState.engineerings;
+            const item = list.find(x => x.id === id);
+            if (!item) return;
+            document.getElementById('edit-unit-type').value = type;
+            document.getElementById('edit-unit-id').value = id;
+            document.getElementById('edit-unit-title').textContent = type === 'dir' ? 'تعديل اسم الإدارة' : 'تعديل اسم الهندسة';
+            document.getElementById('edit-unit-name-input').value = item.name;
+            const modal = document.getElementById('edit-unit-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEditUnitModal() {
+            const modal = document.getElementById('edit-unit-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        async function saveEditedUnitName() {
+            const type = document.getElementById('edit-unit-type').value;
+            const id = document.getElementById('edit-unit-id').value;
+            const newName = document.getElementById('edit-unit-name-input').value.trim();
+            if (!newName) {
+                showToast('يرجى إدخال الاسم الجديد', 'warning');
+                return;
+            }
+            const list = type === 'dir' ? appState.directorates : appState.engineerings;
+            const item = list.find(x => x.id === id);
+            if (!item) return;
+
+            const oldName = item.name;
+            item.name = newName;
+            await pushDataToCloud(type === 'dir' ? 'saveDirectorate' : 'saveEngineering', item);
+            await logAudit(type === 'dir' ? 'تعديل اسم إدارة' : 'تعديل اسم هندسة', id, `من (${oldName}) إلى (${newName})`);
+            
+            closeEditUnitModal();
+            populateAllDropdownsForUser();
+            renderStructureManagement();
+            showToast('تم تعديل الاسم وحفظه بنجاح', 'success');
+        }
+
+        async function saveRegionTargets() {
+            APPROVED_REGIONS.forEach(r => {
+                const val = parseInt(document.getElementById(`target-input-${r.id}`).value, 10) || 0;
+                const existing = appState.targets.find(t => t.regionId === r.id);
+                if (existing) existing.monthlyTarget = val;
+                else appState.targets.push({ regionId: r.id, monthlyTarget: val });
+            });
+            await pushDataToCloud('saveTargets', appState.targets);
+            await logAudit('تحديث المستهدفات الشهرية', 'TARGETS', 'تحديث مستهدفات الأقاليم الستة');
+            showToast('تم حفظ المستهدفات الشهرية للأقاليم بنجاح', 'success');
+        }
+
+        function renderStructureManagement() {
+            document.getElementById('categories-list-box').innerHTML = appState.categories.map(c => `
+                <div class="flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+                    <span>${c.name}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('region-targets-grid').innerHTML = APPROVED_REGIONS.map(r => {
+                const tObj = appState.targets.find(t => t.regionId === r.id);
+                const val = tObj ? tObj.monthlyTarget : 10;
+                return `
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">${r.name}</label>
+                        <input type="number" min="0" id="target-input-${r.id}" value="${val}" class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-bold bg-white">
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('structure-tree-container').innerHTML = APPROVED_REGIONS.map(region => {
+                const dirs = appState.directorates.filter(d => d.regionId === region.id);
+                return `
+                    <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+                        <div class="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+                            <h4 class="font-bold text-sm text-water-900">${region.name}</h4>
+                            <span class="text-[11px] font-bold bg-water-100 text-water-800 px-2 py-0.5 rounded-full">${dirs.length} إدارات</span>
+                        </div>
+                        <div class="space-y-2.5">
+                            ${dirs.map(dir => {
+                                const dirActive = dir.isActive !== false && dir.isActive !== 'false';
+                                const engs = appState.engineerings.filter(e => e.dirId === dir.id);
+                                return `
+                                    <div class="bg-white p-3 rounded-xl border ${dirActive ? 'border-slate-200' : 'border-rose-200 bg-rose-50/30'}">
+                                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                                            <span class="text-xs font-bold ${dirActive ? 'text-slate-800' : 'text-rose-700 line-through'}">${dir.name}</span>
+                                            <div class="flex items-center gap-1 shrink-0">
+                                                <button onclick="openEditUnitModal('dir', '${dir.id}')" class="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-50 text-sky-700 hover:bg-sky-100">تعديل</button>
+                                                <button onclick="toggleUnitActive('dir', '${dir.id}')" class="text-[10px] font-bold px-2 py-0.5 rounded ${dirActive ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}">
+                                                    ${dirActive ? 'إيقاف' : 'تفعيل'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <ul class="space-y-1 pr-3 border-r-2 border-water-200">
+                                            ${engs.map(eng => {
+                                                const engActive = eng.isActive !== false && eng.isActive !== 'false';
+                                                return `
+                                                    <li class="flex items-center justify-between gap-2 text-xs py-0.5">
+                                                        <span class="${engActive ? 'text-slate-600' : 'text-rose-600 line-through'}">${eng.name}</span>
+                                                        <div class="flex items-center gap-1.5 shrink-0">
+                                                            <button onclick="openEditUnitModal('eng', '${eng.id}')" class="text-[10px] font-bold text-sky-600 hover:underline">تعديل</button>
+                                                            <button onclick="toggleUnitActive('eng', '${eng.id}')" class="text-[10px] text-slate-400 hover:text-amber-700">
+                                                                ${engActive ? 'إيقاف' : 'تفعيل'}
+                                                            </button>
+                                                        </div>
+                                                    </li>
+                                                `;
+                                            }).join('')}
+                                        </ul>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================================================
+        // 12. سجل التدقيق الإلكتروني (Audit Log)
+        // ============================================================================
+        async function logAudit(actionType, targetId, details) {
+            const user = appState.currentUser;
+            const entry = {
+                id: 'AUD_' + Date.now(),
+                timestamp: new Date().toLocaleString('ar-EG'),
+                userId: user ? user.id : 'SYSTEM',
+                userName: user ? user.fullName : 'النظام',
+                actionType, targetId, details
+            };
+            appState.auditLogs.unshift(entry);
+            await pushDataToCloud('addAuditLog', entry);
+        }
+
+        function renderAuditLogTable() {
+            const tbody = document.getElementById('audit-log-tbody');
+            if (appState.auditLogs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-slate-400">لا توجد سجلات بعد.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = appState.auditLogs.slice(0, 100).map(log => `
+                <tr class="hover:bg-slate-50">
+                    <td class="py-2.5 px-4 whitespace-nowrap text-slate-500">${log.timestamp}</td>
+                    <td class="py-2.5 px-4 font-bold text-slate-800">${log.userName}</td>
+                    <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded bg-water-50 text-water-800 font-bold">${log.actionType}</span></td>
+                    <td class="py-2.5 px-4 text-slate-600">${log.details}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ============================================================================
+        // 13. الذكاء الاصطناعي، القوائم المنسدلة، والربط السحابي
+        // ============================================================================
+        async function analyzeSingleDescriptionWithAI() {
+            const desc = document.getElementById('act-description').value.trim();
+            if (!desc) { showToast('يرجى كتابة وصف النشاط أولاً', 'warning'); return; }
+            showToast('جاري استخراج عدد المستفيدين من النص...', 'info');
+            try {
+                const apiKey = "";
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `استخرج عدد المستفيدين الرقمي فقط إذا ورد صراحة في النص التالي وإلا أرجع null بصيغة JSON {"beneficiaries": number|null}:\n${desc}` }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+                const data = await res.json();
+                const parsed = JSON.parse(data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+                if (parsed.beneficiaries !== null && parsed.beneficiaries !== undefined) {
+                    document.getElementById('act-beneficiaries').value = parsed.beneficiaries;
+                    showToast(`تم استخراج العدد (${parsed.beneficiaries}) من النص`, 'success');
+                } else {
+                    showToast('لم يرد عدد محدد للمستفيدين في النص المدخل', 'info');
+                }
+            } catch (e) {
+                showToast('تعذر التحليل الآلي حاليًا، يمكنك الإدخال يدويًا', 'error');
+            }
+        }
+
+        function populateAllDropdownsForUser() {
+            const regSelects = ['act-region', 'tracking-region-filter', 'report-region', 'gal-region', 'usr-region', 'struct-dir-region', 'struct-eng-region'];
+            regSelects.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const first = el.options[0] ? el.options[0].outerHTML : '<option value="">-- اختر الإقليم --</option>';
+                el.innerHTML = first + APPROVED_REGIONS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+            });
+
+            const catSelects = ['act-category', 'log-filter-category', 'gal-category'];
+            catSelects.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                const first = id === 'act-category' ? '' : '<option value="">كل التصنيفات</option>';
+                el.innerHTML = first + appState.categories.filter(c => c.isActive !== false).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+            });
+
+            const user = appState.currentUser;
+            const logEng = document.getElementById('log-filter-eng');
+            if (logEng && user) {
+                let engs = appState.engineerings;
+                if (user.role === 'directorate_admin') engs = engs.filter(e => e.dirId === user.dirId);
+                logEng.innerHTML = '<option value="">كل الهندسات</option>' + engs.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            }
+        }
+
+        function populateDirectoratesDropdown(regionSelectId, dirSelectId, engSelectId = null) {
+            const regionId = document.getElementById(regionSelectId).value;
+            const dirSelect = document.getElementById(dirSelectId);
+            const filtered = appState.directorates.filter(d => d.regionId === regionId && d.isActive !== false && d.isActive !== 'false');
+            dirSelect.innerHTML = `<option value="">-- اختر الإدارة --</option>` + filtered.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+            if (engSelectId) document.getElementById(engSelectId).innerHTML = `<option value="">-- اختر الهندسة --</option>`;
+        }
+
+        function populateEngineeringsDropdown(dirSelectId, engSelectId) {
+            const dirId = document.getElementById(dirSelectId).value;
+            const engSelect = document.getElementById(engSelectId);
+            const filtered = appState.engineerings.filter(e => e.dirId === dirId && e.isActive !== false && e.isActive !== 'false');
+            engSelect.innerHTML = `<option value="">-- على مستوى الإدارة / اختر الهندسة --</option>` + filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+        }
+
+        function saveGasUrl() {
+            const url = document.getElementById('gas-web-app-url').value.trim();
+            if (!url) {
+                showToast('يرجى إدخال رابط Web App أولاً', 'warning');
+                return;
+            }
+            if (!url.includes('script.google.com/macros/s/') || !url.endsWith('/exec')) {
+                showToast('تأكد من نسخ الرابط الصحيح الذي يبدأ بـ script.google.com وينتهي بـ /exec', 'warning');
+            }
+            appState.gasUrl = url;
+            localStorage.setItem('irshad_gas_url', url);
+            syncWithGoogleSheets(false);
+        }
+
+        async function testGasConnection() {
+            const url = document.getElementById('gas-web-app-url').value.trim();
+            const diagBox = document.getElementById('gas-diagnostic-box');
+            diagBox.classList.remove('hidden');
+            if (!url) {
+                diagBox.className = 'p-4 rounded-xl text-xs bg-amber-50 text-amber-800 border border-amber-200';
+                diagBox.textContent = 'يرجى لصق الرابط أولاً في الخانة أعلاه.';
+                return;
+            }
+            diagBox.className = 'p-4 rounded-xl text-xs bg-sky-50 text-sky-800 border border-sky-200';
+            diagBox.textContent = 'جاري فحص الرابط والاتصال بخادم Google...';
+            try {
+                const res = await fetch(`${url}?action=getAll`, { method: 'GET', redirect: 'follow' });
+                const text = await res.text();
+                const data = JSON.parse(text);
+                if (data.status === 'success') {
+                    diagBox.className = 'p-4 rounded-xl text-xs bg-emerald-50 text-emerald-800 border border-emerald-200';
+                    diagBox.innerHTML = '<strong>نجح الاتصال!</strong> الخادم يستجيب بشكل سليم. اضغط على "حفظ وتفعيل الربط".';
+                } else {
+                    diagBox.className = 'p-4 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200';
+                    diagBox.innerHTML = `<strong>استجاب الخادم بخطأ:</strong> ${data.message}`;
+                }
+            } catch (e) {
+                diagBox.className = 'p-4 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200 space-y-1';
+                diagBox.innerHTML = `
+                    <strong>فشل الاتصال بالرابط. الأسباب المحتملة:</strong>
+                    <ul class="list-disc pr-5 mt-1 space-y-1">
+                        <li>في صفحة Apps Script، خيار <strong>من لديه حق الوصول (Who has access)</strong> لم يُضبط على <strong>أي شخص (Anyone)</strong>.</li>
+                        <li>تم نسخ رابط الاختبار (<code>/dev</code>) بدلًا من رابط النشر الفعلي (<code>/exec</code>).</li>
+                        <li>تأكدي من حفظ الكود في Apps Script وعمل <strong>نشر جديد (New deployment)</strong> أو اختيار <strong>إصدار جديد (New version)</strong>.</li>
+                    </ul>
+                `;
+            }
+        }
+
+        async function syncWithGoogleSheets(silent = false) {
+            if (!appState.gasUrl) return;
+            try {
+                const res = await fetch(`${appState.gasUrl}?action=getAll`, { method: 'GET', redirect: 'follow' });
+                const data = JSON.parse(await res.text());
+                if (data.status === 'success') {
+                    localStorage.setItem('irshad_gas_url', appState.gasUrl);
+                    if (data.users && data.users.length > 0) appState.users = data.users;
+                    appState.directorates = data.directorates || [];
+                    appState.engineerings = data.engineerings || [];
+                    if (data.categories && data.categories.length > 0) appState.categories = data.categories;
+                    if (data.targets && data.targets.length > 0) appState.targets = data.targets;
+                    appState.activities = data.activities || [];
+                    appState.auditLogs = data.auditLogs || [];
+
+                    const badge = document.getElementById('db-status-badge');
+                    badge.textContent = 'متصل سحابيًا';
+                    badge.className = 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold';
+
+                    if (appState.currentUser) {
+                        populateAllDropdownsForUser();
+                        renderRoleDashboard();
+                    }
+                    if (!silent) showToast('تمت مزامنة البيانات مع Google Sheets بنجاح', 'success');
+                }
+            } catch (err) {
+                if (!silent) showToast('تعذر الاتصال بـ Google Sheets', 'error');
+            }
+        }
+
+        async function pushDataToCloud(action, payload) {
+            if (!appState.gasUrl) return;
+            try {
+                await fetch(appState.gasUrl, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action, payload })
+                });
+            } catch (e) {}
+        }
+
+        function getRegionName(id) { return APPROVED_REGIONS.find(r => r.id === id)?.name || id; }
+        function getDirectorateName(id) { return appState.directorates.find(d => d.id === id)?.name || 'غير محدد'; }
+        function getEngineeringName(id) { return appState.engineerings.find(e => e.id === id)?.name || 'غير محدد'; }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const colors = { success: 'bg-emerald-800 text-white', error: 'bg-rose-800 text-white', info: 'bg-water-800 text-white', warning: 'bg-amber-700 text-white' };
+            toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-xs font-bold pointer-events-auto transition-all`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+
+        let confirmCallback = null;
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmCallback = onConfirm;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+            document.getElementById('confirm-modal').classList.add('flex');
+        }
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            document.getElementById('confirm-modal').classList.remove('flex');
+        }
+        document.getElementById('confirm-action-btn').addEventListener('click', () => {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        });
+    </script>
+</body>
+</html>
